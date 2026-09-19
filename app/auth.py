@@ -1,0 +1,63 @@
+import os
+from datetime import datetime, timedelta
+from fastapi import APIRouter, HTTPException, Depends
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from pydantic import BaseModel
+from passlib.context import CryptContext
+from jose import jwt, JWTError
+from app.database import get_users
+
+router = APIRouter(prefix="/api/auth", tags=["auth"])
+pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
+security = HTTPBearer()
+
+JWT_SECRET = os.getenv("JWT_SECRET", "dev-secret")
+JWT_EXPIRE_MINUTES = int(os.getenv("JWT_EXPIRE_MINUTES", "1440"))
+ALGO = "HS256"
+
+
+class LoginBody(BaseModel):
+    username: str
+    password: str
+
+
+def create_token(username: str, role: str) -> str:
+    payload = {
+        "sub": username,
+        "role": role,
+        "exp": datetime.utcnow() + timedelta(minutes=JWT_EXPIRE_MINUTES),
+    }
+    return jwt.encode(payload, JWT_SECRET, algorithm=ALGO)
+
+
+def get_current_user(creds: HTTPAuthorizationCredentials = Depends(security)):
+    try:
+        payload = jwt.decode(creds.credentials, JWT_SECRET, algorithms=[ALGO])
+        return {"username": payload["sub"], "role": payload["role"]}
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+
+@router.post("/login")
+def login(body: LoginBody):
+    user = get_users().find_one({"username": body.username})
+    if not user or not user.get("active", True):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    if not pwd_ctx.verify(body.password, user.get("password_hash", "")):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+
+    token = create_token(user["username"], user.get("role", "user"))
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "user": {
+            "username": user["username"],
+            "role": user.get("role", "user"),
+            "name": user.get("name", user["username"]),
+        },
+    }
+
+
+@router.get("/me")
+def me(current=Depends(get_current_user)):
+    return current
