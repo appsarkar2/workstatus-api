@@ -1,0 +1,40 @@
+{
+  "id": "bulk_connection",
+  "name": "Bulk Connection",
+  "code": "BC",
+  "icon": "box",
+  "color": "purple",
+  "active": true,
+  "documents_required": [
+    {"key": "application_form", "label": "Application Form"},
+    {"key": "passport_photo", "label": "Passport Size Photo"},
+    {"key": "identity_proof", "label": "Identity Proof"},
+    {"key": "pan", "label": "PAN"},
+    {"key": "gstn", "label": "GSTN"},
+    {"key": "trade_license", "label": "Trade License"},
+    {"key": "pollution_cert", "label": "Pollution Certificate"},
+    {"key": "moa_partnership", "label": "MOA / Partnership Deed"},
+    {"key": "land_deed", "label": "Land Deed / Lease Deed"},
+    {"key": "signing_authority", "label": "Signing Authority Letter"},
+    {"key": "cin", "label": "CIN Certificate"},
+    {"key": "ei_approval_ht", "label": "EI Approval HT"},
+    {"key": "site_plan", "label": "Site Plan"},
+    {"key": "forest_license", "label": "Forest License"}
+  ],
+  "stages": [
+    {"no": 1,  "name": "Application Received & Document Verification"},
+    {"no": 2,  "name": "Physical Inspection & Technical Feasibility"},
+    {"no": 3,  "name": "Quotation Served"},
+    {"no": 4,  "name": "Quotation Amount Deposited"},
+    {"no": 5,  "name": "Work Order Generated"},
+    {"no": 6,  "name": "Execution of Agreement"},
+    {"no": 7,  "name": "Work Completion Report Submitted"},
+    {"no": 8,  "name": "Consumer Outgoing Portion Ready"},
+    {"no": 9,  "name": "EI Approval Submitted"},
+    {"no": 10, "name": "Commercial Clearance Issued"},
+    {"no": 11, "name": "Meter Installation Completed"},
+    {"no": 12, "name": "Meter Report Submitted"},
+    {"no": 13, "name": "Master Card Created"}
+  ],
+  "statuses": ["in_progress", "completed", "rejected", "on_hold"]
+}
