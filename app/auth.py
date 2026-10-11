@@ -1,4 +1,3 @@
-import os
 from datetime import datetime, timedelta
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -6,13 +5,14 @@ from pydantic import BaseModel
 from passlib.context import CryptContext
 from jose import jwt, JWTError
 from app.database import get_users
+from app.settings import settings
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
 security = HTTPBearer()
 
-JWT_SECRET = os.getenv("JWT_SECRET", "dev-secret")
-JWT_EXPIRE_MINUTES = int(os.getenv("JWT_EXPIRE_MINUTES", "1440"))
+JWT_SECRET = settings.jwt_secret
+JWT_EXPIRE_MINUTES = settings.jwt_expire_minutes
 ALGO = "HS256"
 
 
