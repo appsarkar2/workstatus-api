@@ -13,9 +13,9 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$root       = Split-Path -Parent $PSScriptRoot
-$blocksDir  = Join-Path $root "backend\app\blocks"
-$targetDir  = Join-Path $blocksDir $BlockId
+$backendRoot = Split-Path -Parent $PSScriptRoot
+$blocksDir   = Join-Path $backendRoot "app\blocks"
+$targetDir   = Join-Path $blocksDir $BlockId
 
 if (Test-Path $targetDir) {
     Write-Host "[ERROR] Block '$BlockId' already exists at $targetDir" -ForegroundColor Red

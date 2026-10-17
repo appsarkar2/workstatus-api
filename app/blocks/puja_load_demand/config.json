@@ -1,0 +1,108 @@
+{
+  "id": "puja_load_demand",
+  "name": "PUJA Load Demand",
+  "code": "PLD",
+  "icon": "bolt",
+  "color": "orange",
+  "active": true,
+
+  "time_slots": [
+    "00:00", "01:00", "02:00", "03:00", "04:00", "05:00",
+    "06:00", "07:00", "08:00", "09:00", "10:00", "11:00",
+    "12:00", "13:00", "14:00", "15:00", "16:00", "17:00",
+    "18:00", "19:00", "20:00", "21:00", "22:00", "23:00"
+  ],
+
+  "divisions": [
+    {
+      "code": "ST",
+      "name": "Siliguri Town",
+      "substations": [
+        {"sl_no": 1,  "name": "SILIGURI",         "capacity_mva": 32.60},
+        {"sl_no": 2,  "name": "HOUSING BOARD",    "capacity_mva": 36.30},
+        {"sl_no": 3,  "name": "RABINDRANAGAR",    "capacity_mva": 40.00},
+        {"sl_no": 4,  "name": "DESHBANDHUPARA",   "capacity_mva": 26.30},
+        {"sl_no": 5,  "name": "DABGRAM",          "capacity_mva": 25.20},
+        {"sl_no": 6,  "name": "JHANKAR",          "capacity_mva": 30.00},
+        {"sl_no": 7,  "name": "UJANU",            "capacity_mva": 28.90},
+        {"sl_no": 8,  "name": "SALBARI",          "capacity_mva": 26.30},
+        {"sl_no": 9,  "name": "PURBA KORAI BARI", "capacity_mva": 20.00},
+        {"sl_no": 10, "name": "SUBHASH PALLY",    "capacity_mva": 20.00},
+        {"sl_no": 11, "name": "TINBATTI",         "capacity_mva": 20.00},
+        {"sl_no": 12, "name": "SILVER OAKS",      "capacity_mva": 12.60},
+        {"sl_no": 13, "name": "TB HOSPITAL",      "capacity_mva": 20.00}
+      ],
+      "feeders": {
+        "33kv_total": 32,
+        "11kv_total": 124
+      }
+    },
+    {
+      "code": "SU",
+      "name": "Siliguri Sub Urban",
+      "substations": [
+        {"sl_no": 1,  "name": "NBU",             "capacity_mva": 32.60},
+        {"sl_no": 2,  "name": "BIDHANNAGAR",     "capacity_mva": 26.30},
+        {"sl_no": 3,  "name": "KHARIBARI",       "capacity_mva": 18.90},
+        {"sl_no": 4,  "name": "GHOSHPUKUR",      "capacity_mva": 25.20},
+        {"sl_no": 5,  "name": "KHAPRAIL",        "capacity_mva": 18.90},
+        {"sl_no": 6,  "name": "TCF",             "capacity_mva": 17.60},
+        {"sl_no": 7,  "name": "HATIGHISHA",      "capacity_mva": 18.90},
+        {"sl_no": 8,  "name": "BAGDOGRA",        "capacity_mva": 12.60},
+        {"sl_no": 9,  "name": "SHANTINIKETAN",   "capacity_mva": 6.30},
+        {"sl_no": 10, "name": "UTTARA",          "capacity_mva": 20.00},
+        {"sl_no": 11, "name": "EMBEE DELIGHT",   "capacity_mva": 20.00},
+        {"sl_no": 12, "name": "VASTU BIHAR",     "capacity_mva": 12.60},
+        {"sl_no": 13, "name": "UPWAN",           "capacity_mva": 12.60},
+        {"sl_no": 14, "name": "UTSODHARA",       "capacity_mva": 20.00},
+        {"sl_no": 15, "name": "KAWAKHALI",       "capacity_mva": 12.60}
+      ],
+      "feeders": {
+        "33kv_total": 28,
+        "11kv_total": 86
+      }
+    },
+    {
+      "code": "KUR",
+      "name": "Kurseong",
+      "substations": [
+        {"sl_no": 1, "name": "PANKHABARI", "capacity_mva": 12.30},
+        {"sl_no": 2, "name": "MIRIK",      "capacity_mva": 6.30},
+        {"sl_no": 3, "name": "SONADA",     "capacity_mva": 12.60},
+        {"sl_no": 4, "name": "JOGIGHAT",   "capacity_mva": 6.00}
+      ],
+      "feeders": {
+        "33kv_total": 12,
+        "11kv_total": 26
+      }
+    },
+    {
+      "code": "DARJ",
+      "name": "Darjeeling",
+      "substations": [
+        {"sl_no": 1, "name": "HAPPY VALLEY",    "capacity_mva": 15.75},
+        {"sl_no": 2, "name": "LEBONG",          "capacity_mva": 6.30},
+        {"sl_no": 3, "name": "NEW SINGAMARI",   "capacity_mva": 6.30},
+        {"sl_no": 4, "name": "OLD GHOOM",       "capacity_mva": 6.30},
+        {"sl_no": 5, "name": "NEW GHOOM",       "capacity_mva": 12.60},
+        {"sl_no": 6, "name": "POKHRIABONG",     "capacity_mva": 9.45},
+        {"sl_no": 7, "name": "TAKDAH",          "capacity_mva": 12.60},
+        {"sl_no": 8, "name": "LODHAMA",         "capacity_mva": 6.30},
+        {"sl_no": 9, "name": "BIJANBARI",       "capacity_mva": 9.45}
+      ],
+      "feeders": {
+        "33kv_total": 20,
+        "11kv_total": 45
+      }
+    }
+  ],
+
+  "documents_required": [],
+
+  "stages": [
+    {"no": 1, "name": "Entry Submitted"},
+    {"no": 2, "name": "Verified by Admin"}
+  ],
+
+  "statuses": ["submitted", "verified", "rejected"]
+}

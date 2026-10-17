@@ -1,0 +1,19 @@
+{
+  "id": "test_path",
+  "name": "Test Path",
+  "code": "TES",
+  "icon": "box",
+  "color": "blue",
+  "active": true,
+  "documents_required": [
+    {"key": "application_form", "label": "Application Form"},
+    {"key": "identity_proof",   "label": "Identity Proof"}
+  ],
+  "stages": [
+    {"no": 1, "name": "Application Received"},
+    {"no": 2, "name": "Verification"},
+    {"no": 3, "name": "Approval"},
+    {"no": 4, "name": "Completed"}
+  ],
+  "statuses": ["in_progress", "completed", "rejected", "on_hold"]
+}

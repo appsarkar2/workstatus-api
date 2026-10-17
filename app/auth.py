@@ -54,6 +54,7 @@ def login(body: LoginBody):
             "username": user["username"],
             "role": user.get("role", "user"),
             "name": user.get("name", user["username"]),
+            "division": user.get("division", None),  # <-- Added this line
         },
     }
 
