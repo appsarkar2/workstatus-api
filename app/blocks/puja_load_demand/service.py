@@ -182,6 +182,59 @@ class PUJALoadDemandService(BaseBlockService):
         }
 
     # ------------------------------------------------------------
+    # Override update (PUJA has no applicant, has substations instead)
+    # ------------------------------------------------------------
+    def update(self, app_id: str, body):
+        oid = self._to_oid(app_id)
+        doc = self.collection.find_one({"_id": oid, "block_id": self.BLOCK_ID})
+        if not doc:
+            raise HTTPException(status_code=404, detail="Application not found")
+
+        update_data = {}
+
+        if body.substations is not None:
+            # Recalculate totals + percentages
+            total_load = 0.0
+            total_capacity = 0.0
+            new_substations = []
+            for s in body.substations:
+                pct = round((s.load_mva / s.capacity_mva * 100), 2) if s.capacity_mva > 0 else 0.0
+                new_substations.append({
+                    "sl_no": s.sl_no,
+                    "name": s.name,
+                    "load_mva": round(s.load_mva, 2),
+                    "capacity_mva": round(s.capacity_mva, 2),
+                    "percent": pct,
+                })
+                total_load += s.load_mva
+                total_capacity += s.capacity_mva
+            
+            update_data["substations"] = new_substations
+            update_data["total_load_mva"] = round(total_load, 2)
+            update_data["total_capacity_mva"] = round(total_capacity, 2)
+            update_data["overall_percent"] = round((total_load / total_capacity * 100), 2) if total_capacity > 0 else 0.0
+
+        if body.system_report is not None:
+            update_data["system_report"] = body.system_report.dict()
+        
+        if body.weather is not None:
+            update_data["weather"] = body.weather
+            
+        if body.system_status is not None:
+            update_data["system_status"] = body.system_status
+            
+        if getattr(body, "remarks", None) is not None:
+            update_data["remarks"] = body.remarks
+
+        update_data["updated_at"] = datetime.utcnow()
+
+        self.collection.update_one(
+            {"_id": oid, "block_id": self.BLOCK_ID},
+            {"$set": update_data},
+        )
+        return {"message": "Updated", "id": app_id}
+
+    # ------------------------------------------------------------
     # Region report — all divisions for a date + time
     # ------------------------------------------------------------
     def region_report(self, date: str, time: str):
