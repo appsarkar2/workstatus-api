@@ -1,15 +1,9 @@
 # backend/app/blocks/puja_load_demand/models.py
 """
 Pydantic models for PUJA Load Demand block.
-
-Different from bulk_connection because:
-- Each entry = one division + one date + one time slot
-- Substations are a nested array (not a separate collection)
-- System report fields are specific to load reporting
-- No document checklist
 """
 from pydantic import BaseModel, Field
-from typing import Optional, List
+from typing import Optional, List, Union
 
 
 class SubstationEntry(BaseModel):
@@ -25,18 +19,18 @@ class SystemReport(BaseModel):
     """Bottom section of the daily report."""
     ss_without_power: Optional[str] = "NIL/0"
     line_33kv_bd: Optional[str] = "NIL/0"
-    line_33kv_bulk: Optional[str] = "NIL/0"  # Added
+    line_33kv_bulk: Optional[Union[int, str]] = 0    # Accepts both int and str
     line_11kv_bd: Optional[str] = "NIL/0"
-    line_11kv_bd_partial: Optional[str] = "NIL/0" # Changed to string
-    dtr_replacement_pending: Optional[str] = "NIL" # Changed to string
+    line_11kv_bd_partial: Optional[str] = "NIL/0"
+    dtr_replacement_pending: Optional[Union[int, str]] = 0 # Accepts both int and str
 
 
 class PUJALoadDemandCreate(BaseModel):
     """Payload when a division user submits a new entry."""
-    division: str                        # "Siliguri Town"
-    date: str                            # "2026-10-16"
-    time: str                            # "17:00"
-    substations: List[SubstationEntry]   # full list for the division
+    division: str
+    date: str
+    time: str
+    substations: List[SubstationEntry]
     system_report: Optional[SystemReport] = Field(default_factory=SystemReport)
     weather: Optional[str] = "Normal"
     system_status: Optional[str] = "Normal"
