@@ -1,0 +1,29 @@
+{
+  "id": "civil_work",
+  "name": "Civil Work",
+  "code": "CIV",
+  "icon": "🏗️",
+  "color": "#f59e0b",
+  "active": true,
+  "stages": [
+    { "no": 1, "name": "Inception", "responsible": "Any One" },
+    { "no": 2, "name": "Proposal", "responsible": "Asset User" },
+    { "no": 3, "name": "Estimation", "responsible": "Civil - DRO" },
+    { "no": 4, "name": "Funding", "responsible": "DHQ" },
+    { "no": 5, "name": "Approval and T and AA", "responsible": "Competent Authority" },
+    { "no": 6, "name": "Tendering", "responsible": "Competent Authority" },
+    { "no": 7, "name": "PO Placement", "responsible": "Competent Authority" },
+    { "no": 8, "name": "Site Handover", "responsible": "RM DRO" },
+    { "no": 9, "name": "Completion", "responsible": "Controlling Officer" },
+    { "no": 10, "name": "Financial Closure", "responsible": "Civil - DRO" }
+  ],
+  "documents_required": [
+    "Proposal Document",
+    "Estimation Sheet",
+    "Funding Approval",
+    "Tender Documents",
+    "Purchase Order (PO)",
+    "Completion Certificate",
+    "Financial Closure Report"
+  ]
+}
