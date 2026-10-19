@@ -65,6 +65,17 @@ def peak_load(
     return PUJALoadDemandService(current).peak_load(date=date)
 
 
+# NEW: Date Range Peaks endpoint for the frontend table
+@router.get("/report/date-range-peaks")
+def get_date_range_peaks(
+    start_date: str = Query(..., description="YYYY-MM-DD"),
+    end_date: str = Query(..., description="YYYY-MM-DD"),
+    current=Depends(get_current_user),
+):
+    """Find the max load and exact time for each division across a date range."""
+    return PUJALoadDemandService(current).date_range_peaks(start_date=start_date, end_date=end_date)
+
+
 @router.get("/cost-centers")
 def list_cost_centers(current=Depends(get_current_user)):
     return PUJALoadDemandService(current).list_cost_centers()

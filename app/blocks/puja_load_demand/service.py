@@ -338,6 +338,53 @@ class PUJALoadDemandService(BaseBlockService):
         }
 
     # ------------------------------------------------------------
+    # NEW: Date Range Peaks (Aggregation for the new Report Table)
+    # ------------------------------------------------------------
+    def date_range_peaks(self, start_date: str, end_date: str):
+        """
+        Finds the absolute maximum load and the exact time it occurred 
+        for each division across a specific date range.
+        Uses MongoDB Aggregation for instant results.
+        """
+        pipeline = [
+            {
+                "$match": {
+                    "block_id": self.BLOCK_ID,
+                    "date": {"$gte": start_date, "$lte": end_date}
+                }
+            },
+            {"$sort": {"total_load_mva": -1}},
+            {
+                "$group": {
+                    "_id": {
+                        "division": "$division",
+                        "date": "$date"
+                    },
+                    "peak_load": {"$first": "$total_load_mva"},
+                    "peak_time": {"$first": "$time"}
+                }
+            }
+        ]
+        
+        results = list(self.collection.aggregate(pipeline))
+        
+        # Format into a nested dict: { "Division A": { "2026-10-18": { load, time }, ... } }
+        peaks = {}
+        for r in results:
+            div = r["_id"]["division"]
+            date = r["_id"]["date"]
+            
+            if div not in peaks:
+                peaks[div] = {}
+                
+            peaks[div][date] = {
+                "load": r["peak_load"],
+                "time": r["peak_time"]
+            }
+            
+        return peaks
+
+    # ------------------------------------------------------------
     # Cost center management
     # ------------------------------------------------------------
     def list_cost_centers(self):
