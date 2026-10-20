@@ -17,6 +17,7 @@ class CivilWorkCreate(BaseModel):
     division: str
     location_type: str
     location_name: str
+    feeder_name: Optional[str] = ""  # <-- Added to support Feeders
     
     applicant: ApplicantInfo
     application_date: Optional[str] = None
@@ -32,6 +33,7 @@ class CivilWorkUpdate(BaseModel):
     division: Optional[str] = None
     location_type: Optional[str] = None
     location_name: Optional[str] = None
+    feeder_name: Optional[str] = None   # <-- Added to support Feeders
     
     applicant: Optional[ApplicantInfo] = None
     documents: Optional[Dict[str, bool]] = None

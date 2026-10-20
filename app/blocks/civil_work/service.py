@@ -29,13 +29,14 @@ class CivilWorkService(BaseBlockService):
             "application_no": generated_app_no, 
             "applicant": body.applicant.dict(), 
             
-            # New Civil Work specific fields
+            # Civil Work specific fields
             "work_type": body.work_type,
             "zone": body.zone,
             "region": body.region,
             "division": body.division,
             "location_type": body.location_type,
             "location_name": body.location_name,
+            "feeder_name": getattr(body, "feeder_name", ""), # <-- Added to save Feeder
             
             "application_date": body.application_date or now.strftime("%Y-%m-%d"),
             "documents": body.documents or {}, 
