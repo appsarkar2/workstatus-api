@@ -338,7 +338,7 @@ class PUJALoadDemandService(BaseBlockService):
         }
 
     # ------------------------------------------------------------
-    # NEW: Date Range Peaks (Aggregation for the new Report Table)
+    # Date Range Peaks (Aggregation for the new Report Table)
     # ------------------------------------------------------------
     def date_range_peaks(self, start_date: str, end_date: str):
         """
@@ -346,13 +346,12 @@ class PUJALoadDemandService(BaseBlockService):
         for each division across a specific date range.
         Uses MongoDB Aggregation for instant results.
         """
+        # Apply the user's role-based view filter
+        query_filter = self._view_filter()
+        query_filter["date"] = {"$gte": start_date, "$lte": end_date}
+
         pipeline = [
-            {
-                "$match": {
-                    "block_id": self.BLOCK_ID,
-                    "date": {"$gte": start_date, "$lte": end_date}
-                }
-            },
+            {"$match": query_filter},
             {"$sort": {"total_load_mva": -1}},
             {
                 "$group": {
