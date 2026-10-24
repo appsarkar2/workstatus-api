@@ -9,7 +9,9 @@ from app.settings import settings
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
-security = HTTPBearer()
+
+# ✅ auto_error=False stops HTTPBearer from raising a bare 403 before CORS runs
+security = HTTPBearer(auto_error=False)
 
 JWT_SECRET = settings.jwt_secret
 JWT_EXPIRE_MINUTES = settings.jwt_expire_minutes
@@ -31,11 +33,21 @@ def create_token(username: str, role: str) -> str:
 
 
 def get_current_user(creds: HTTPAuthorizationCredentials = Depends(security)):
+    if creds is None:
+        raise HTTPException(
+            status_code=401,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     try:
         payload = jwt.decode(creds.credentials, JWT_SECRET, algorithms=[ALGO])
         return {"username": payload["sub"], "role": payload["role"]}
     except JWTError:
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid or expired token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
 
 @router.post("/login")
@@ -54,7 +66,7 @@ def login(body: LoginBody):
             "username": user["username"],
             "role": user.get("role", "user"),
             "name": user.get("name", user["username"]),
-            "division": user.get("division", None),  # <-- Added this line
+            "division": user.get("division", None),
         },
     }
 

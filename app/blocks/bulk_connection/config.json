@@ -22,19 +22,19 @@
     {"key": "forest_license", "label": "Forest License"}
   ],
   "stages": [
-    {"no": 1,  "name": "Application Received & Document Verification"},
-    {"no": 2,  "name": "Physical Inspection & Technical Feasibility"},
-    {"no": 3,  "name": "Quotation Served"},
-    {"no": 4,  "name": "Quotation Amount Deposited"},
-    {"no": 5,  "name": "Work Order Generated"},
-    {"no": 6,  "name": "Execution of Agreement"},
-    {"no": 7,  "name": "Work Completion Report Submitted"},
-    {"no": 8,  "name": "Consumer Outgoing Portion Ready"},
-    {"no": 9,  "name": "EI Approval Submitted"},
-    {"no": 10, "name": "Commercial Clearance Issued"},
-    {"no": 11, "name": "Meter Installation Completed"},
-    {"no": 12, "name": "Meter Report Submitted"},
-    {"no": 13, "name": "Master Card Created"}
+    { "no": 1, "name": "Application Received & Document Verification", "dept": "HR", "sla_days": 1 },
+    { "no": 2, "name": "Physical Inspection & Technical Feasibility", "dept": "Commerce", "sla_days": 7 },
+    { "no": 3, "name": "Quotation Served", "dept": "Commerce", "sla_days": 1 },
+    { "no": 4, "name": "Quotation Amount Deposited", "dept": "Finance", "sla_days": 1 },
+    { "no": 5, "name": "Work Order Generated", "dept": "Commerce", "sla_days": 2 },
+    { "no": 6, "name": "Execution of Agreement", "dept": "Commerce", "sla_days": 5 },
+    { "no": 7, "name": "Work Completion Report Submitted", "dept": "Commerce", "sla_days": 15 },
+    { "no": 8, "name": "Consumer Outgoing Portion Ready", "dept": "Consumer", "sla_days": 15 },
+    { "no": 9, "name": "EI Approval Submitted", "dept": "Commerce", "sla_days": 7 },
+    { "no": 10, "name": "Commercial Clearance Issued", "dept": "Commerce", "sla_days": 2 },
+    { "no": 11, "name": "Meter Installation Completed", "dept": "Commerce", "sla_days": 5 },
+    { "no": 12, "name": "Meter Report Submitted", "dept": "Commerce", "sla_days": 2 },
+    { "no": 13, "name": "Master Card Created", "dept": "Commerce", "sla_days": 2 }
   ],
   "statuses": ["in_progress", "completed", "rejected", "on_hold"]
 }
