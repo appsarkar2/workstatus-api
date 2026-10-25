@@ -1,0 +1,17 @@
+{
+  "id": "electrical_works",
+  "name": "Electrical Works",
+  "code": "EW",
+  "icon": "bolt",
+  "color": "yellow",
+  "active": true,
+  "stages": [
+    { "no": 1, "name": "Application Received & Site Verification", "dept": "HR", "sla_days": 2 },
+    { "no": 2, "name": "Technical Feasibility & Estimation", "dept": "Commerce", "sla_days": 3 },
+    { "no": 3, "name": "Work Order & Budget Approval", "dept": "Finance", "sla_days": 5 },
+    { "no": 4, "name": "Material Procurement", "dept": "Commerce", "sla_days": 7 },
+    { "no": 5, "name": "Execution & Installation", "dept": "Commerce", "sla_days": 10 },
+    { "no": 6, "name": "Testing, Handover & Closure", "dept": "Commerce", "sla_days": 3 }
+  ],
+  "documents_required": ["Application Form", "Site Map", "Load Approval"]
+}
