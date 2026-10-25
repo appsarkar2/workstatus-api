@@ -14,6 +14,7 @@ class ElectricalWorkCreate(BaseModel):
     region: Optional[str] = ""
     division: Optional[str] = ""
     scheme_head: Optional[str] = ""
+    voltage_level: Optional[str] = "11 KV" # <-- ADDED HERE
     related_ss: Optional[str] = ""
     
     # Scheme Details
@@ -36,6 +37,7 @@ class ElectricalWorkUpdate(BaseModel):
     region: Optional[str] = None
     division: Optional[str] = None
     scheme_head: Optional[str] = None
+    voltage_level: Optional[str] = None # <-- ADDED HERE
     related_ss: Optional[str] = None
     scheme_name: Optional[str] = None
     existing_parameter: Optional[str] = None

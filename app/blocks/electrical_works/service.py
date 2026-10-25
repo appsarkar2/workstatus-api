@@ -81,6 +81,7 @@ class ElectricalWorksService(BaseBlockService):
             "region": body.region,
             "division": body.division,
             "scheme_head": body.scheme_head,
+            "voltage_level": body.voltage_level, 
             "related_ss": body.related_ss,
             "scheme_name": body.scheme_name,
             "existing_parameter": body.existing_parameter,
@@ -114,7 +115,7 @@ class ElectricalWorksService(BaseBlockService):
             raise HTTPException(status_code=404, detail="Application not found")
 
         update_data = {}
-        for field in ["phase", "region", "division", "scheme_head", "related_ss", 
+        for field in ["phase", "region", "division", "scheme_head", "voltage_level", "related_ss", 
                       "scheme_name", "existing_parameter", "proposed_parameter", 
                       "loading_peak", "major_material", "priority", "taa_no", 
                       "target_date", "eoffice_ref", "detailed_status"]:
@@ -141,7 +142,7 @@ class ElectricalWorksService(BaseBlockService):
         role = self.user.get("role", "").lower()
         username = self.user.get("username", "").lower()
 
-        if role not in ("super_admin", "admin"):
+        if role not in ("super_admin", "admin", "division_user"):
             allowed_stages = self.ALLOWED_MAP.get(username, [])
             if body.stage_no not in allowed_stages:
                 raise HTTPException(status_code=403, detail=f"Not authorized for Stage {body.stage_no}")
@@ -203,7 +204,6 @@ class ElectricalWorksService(BaseBlockService):
         )
         return {"message": "Stage updated"}
 
-    # --- CORRECTLY INDENTED METHOD ---
     def get_scheme_overview(self):
         """Calculates stats grouped by Scheme Head and Phase."""
         apps = list(self.collection.find({"block_id": self.BLOCK_ID}))
@@ -213,12 +213,14 @@ class ElectricalWorksService(BaseBlockService):
             "completed": len([a for a in apps if a.get("status") == "completed"]),
             "in_progress": len([a for a in apps if a.get("status") == "in_progress"]),
             "scheme_heads": {},
-            "phases": {}
+            "phases": {},
+            "voltage_levels": {}
         }
 
         for app in apps:
             head = app.get("scheme_head", "Uncategorized")
             phase = app.get("phase", "Phase-I")
+            voltage = app.get("voltage_level", "Misc")
             status = app.get("status", "in_progress")
 
             # Group by Scheme Head
@@ -231,5 +233,54 @@ class ElectricalWorksService(BaseBlockService):
             if phase not in overview["phases"]:
                 overview["phases"][phase] = 0
             overview["phases"][phase] += 1
+            
+            # Group by Voltage Level
+            if voltage not in overview["voltage_levels"]:
+                overview["voltage_levels"][voltage] = 0
+            overview["voltage_levels"][voltage] += 1
 
         return overview
+
+    def get_scheme_overview_table(self):
+        """Calculates grouped stats for the data table view."""
+        apps = list(self.collection.find({"block_id": self.BLOCK_ID}))
+        overview = {}
+
+        for app in apps:
+            head = app.get("scheme_head", "Uncategorized")
+            if head not in overview:
+                overview[head] = {"total": 0, "completed": 0, "in_progress": 0, "pending": 0, "last_updated": None}
+            
+            overview[head]["total"] += 1
+            status = app.get("status", "in_progress")
+            
+            if status == "completed":
+                overview[head]["completed"] += 1
+            elif status == "in_progress":
+                overview[head]["in_progress"] += 1
+            else:
+                overview[head]["pending"] += 1
+                
+            # Track the latest update time
+            upd = app.get("updated_at")
+            if upd and (overview[head]["last_updated"] is None or upd > overview[head]["last_updated"]):
+                overview[head]["last_updated"] = upd
+
+        # Format the response as a list
+        result = []
+        for head, stats in overview.items():
+            # Calculate progress percentage
+            pct = round((stats["completed"] / stats["total"]) * 100) if stats["total"] > 0 else 0
+            result.append({
+                "scheme_head": head,
+                "total": stats["total"],
+                "completed": stats["completed"],
+                "in_progress": stats["in_progress"],
+                "pending": stats["pending"],
+                "progress_pct": pct,
+                "last_updated": stats["last_updated"].strftime("%d/%m/%Y %I:%M %p") if stats["last_updated"] else "N/A"
+            })
+            
+        # Sort by total descending
+        result.sort(key=lambda x: x["total"], reverse=True)
+        return result

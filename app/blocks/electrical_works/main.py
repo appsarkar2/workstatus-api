@@ -35,13 +35,6 @@ def get_stats(current=Depends(get_current_user)):
 
 @router.get("/sla-summary")
 def get_sla_summary(current=Depends(get_current_user)):
-    """
-    Returns delay counts grouped by Stage Number for the dashboard cards.
-    """
-    # We can reuse the base service summary logic if you copied it, 
-    # but for now, we'll just return an empty dict to prevent 404.
-    # (If you want the red/green cards to work, you can copy the 
-    # get_stage_sla_summary method from bulk_connection/service.py into electrical_works/service.py)
     return {}
 
 @router.get("/stage-apps")
@@ -49,9 +42,6 @@ def get_stage_apps(
     stage_no: int = Query(...),
     current=Depends(get_current_user)
 ):
-    """
-    Fetches applications in a specific stage and calculates their exact delay.
-    """
     service = ElectricalWorksService(current)
     apps = list(service.collection.find({
         "block_id": service.BLOCK_ID, 
@@ -81,6 +71,13 @@ def get_stage_apps(
         results.append(app)
         
     return {"items": results}
+
+# --- NEW ROUTE FOR TABLE OVERVIEW ---
+
+@router.get("/overview-table")
+def get_overview_table(current=Depends(get_current_user)):
+    """Returns grouped stats by Scheme Head for the data table."""
+    return ElectricalWorksService(current).get_scheme_overview_table()
 
 # --- PARAMETERIZED ROUTES (Must be at the bottom) ---
 
