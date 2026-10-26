@@ -208,7 +208,7 @@ class ElectricalWorksService(BaseBlockService):
         )
         return {"message": "Stage updated"}
 
-    # --- UPDATED METHOD WITH FILTERS ---
+    # --- UPDATED METHOD WITH FILTERS AND ZERO INITIALIZATION ---
     def get_scheme_overview_table(self, voltage=None, phase=None, zone=None, region=None, division=None):
         """Calculates grouped stats for the data table view, applying filters first."""
         
@@ -231,7 +231,34 @@ class ElectricalWorksService(BaseBlockService):
 
         # Fetch only matching apps from MongoDB
         apps = list(self.collection.find(query))
+        
+        # --- PRE-POPULATE ALL MASTER CATEGORIES ---
+        MASTER_SCHEME_HEADS = [
+            "New SS", 
+            "PTR Augmentation / New PTR",
+            "33KV Second Source / Tapping Source Elemination",
+            "Augmentation of conductor size of 33kV Feeders",
+            "Augmentation of conductor size of 33kV Switchyard",
+            "Bifurcation of 11kV Feeders",
+            "Augmentation of conductor size of 11kV Feeders",
+            "HT AB Cable Conversion",
+            "Control Room Extension / Modification"
+        ]
+        
         overview = {}
+        
+        # Default division for empty categories
+        default_div = "All / N/A"
+        if query.get("division"): default_div = query["division"]
+
+        for head in MASTER_SCHEME_HEADS:
+            group_key = f"{head}|||{default_div}"
+            overview[group_key] = {
+                "scheme_head": head,
+                "division": default_div,
+                "total": 0, "completed": 0, "in_progress": 0, "pending": 0, "last_updated": None
+            }
+        # ------------------------------------------------
 
         for app in apps:
             head = app.get("scheme_head", "Uncategorized")
