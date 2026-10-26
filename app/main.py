@@ -2,6 +2,7 @@
 import logging
 import time
 import traceback
+import os
 
 from fastapi import FastAPI, Request, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -31,20 +32,26 @@ app = FastAPI(title="WorkStatus API", version=settings.app_version)
 # ---- CORS Configuration ----
 # Note: allow_origins cannot be ["*"] if allow_credentials=True.
 # We must explicitly list the frontend URLs (local + production).
+
+# You can also set these in your .env file as a comma-separated string
+env_origins = os.getenv("ALLOWED_ORIGINS", "")
+origins_list = [origin.strip() for origin in env_origins.split(",") if origin.strip()] if env_origins else [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:5500",
+    "http://127.0.0.1:5500",
+    "http://localhost:8080",
+    "http://127.0.0.1:8080",
+    "https://madeeasydro.vercel.app"
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://localhost:5500",
-        "http://127.0.0.1:5500",
-        "http://localhost:8080",
-        "http://127.0.0.1:8080",
-        "https://madeeasydro.vercel.app"
-    ],
+    allow_origins=origins_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 
@@ -61,10 +68,19 @@ async def log_requests(request: Request, call_next):
 
 
 # ---- Global exception handler ----
+# This ensures that even if the server crashes, the CORS headers are still sent
+# so the browser doesn't hide the real error under a fake "CORS error".
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     logger.error(f"Unhandled exception on {request.method} {request.url.path}: {exc}")
     logger.error(traceback.format_exc())
+    
+    origin = request.headers.get("origin")
+    headers = {}
+    if origin and origin in origins_list:
+        headers["Access-Control-Allow-Origin"] = origin
+        headers["Access-Control-Allow-Credentials"] = "true"
+        
     return JSONResponse(
         status_code=500,
         content={
@@ -72,6 +88,7 @@ async def global_exception_handler(request: Request, exc: Exception):
             "type": type(exc).__name__,
             "path": str(request.url.path),
         },
+        headers=headers,
     )
 
 
@@ -104,7 +121,7 @@ def get_blocks(current=Depends(get_current_user)):
     return {"blocks": list_active_blocks()}
 
 
-# ---- Organization Structure (Civil Work) ----
+# ---- Organization Structure ----
 
 class OrgStructureUpdate(BaseModel):
     zones: Dict

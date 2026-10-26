@@ -72,12 +72,21 @@ def get_stage_apps(
         
     return {"items": results}
 
-# --- NEW ROUTE FOR TABLE OVERVIEW ---
+# --- NEW ROUTE FOR TABLE OVERVIEW (UPDATED WITH FILTERS) ---
 
 @router.get("/overview-table")
-def get_overview_table(current=Depends(get_current_user)):
-    """Returns grouped stats by Scheme Head for the data table."""
-    return ElectricalWorksService(current).get_scheme_overview_table()
+def get_overview_table(
+    voltage: str = Query(None),
+    phase: str = Query(None),
+    zone: str = Query(None),
+    region: str = Query(None),
+    division: str = Query(None),
+    current=Depends(get_current_user)
+):
+    """Returns grouped stats by Scheme Head and Division with filters."""
+    return ElectricalWorksService(current).get_scheme_overview_table(
+        voltage=voltage, phase=phase, zone=zone, region=region, division=division
+    )
 
 # --- PARAMETERIZED ROUTES (Must be at the bottom) ---
 
