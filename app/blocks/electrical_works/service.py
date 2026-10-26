@@ -208,11 +208,9 @@ class ElectricalWorksService(BaseBlockService):
         )
         return {"message": "Stage updated"}
 
-    # --- UPDATED METHOD WITH FILTERS AND ZERO INITIALIZATION ---
     def get_scheme_overview_table(self, voltage=None, phase=None, zone=None, region=None, division=None):
         """Calculates grouped stats for the data table view, applying filters first."""
         
-        # 1. Handle User Jurisdiction
         user_role = self.user.get("role", "").lower()
         user_division = self.user.get("division", "")
         
@@ -222,49 +220,19 @@ class ElectricalWorksService(BaseBlockService):
         if user_role not in ("super_admin", "admin") and user_division:
             query["division"] = user_division
         else:
-            # Otherwise apply UI filters
             if voltage: query["voltage_level"] = voltage
             if phase: query["phase"] = phase
             if zone: query["zone"] = zone
             if region: query["region"] = region
             if division: query["division"] = division
 
-        # Fetch only matching apps from MongoDB
         apps = list(self.collection.find(query))
-        
-        # --- PRE-POPULATE ALL MASTER CATEGORIES ---
-        MASTER_SCHEME_HEADS = [
-            "New SS", 
-            "PTR Augmentation / New PTR",
-            "33KV Second Source / Tapping Source Elemination",
-            "Augmentation of conductor size of 33kV Feeders",
-            "Augmentation of conductor size of 33kV Switchyard",
-            "Bifurcation of 11kV Feeders",
-            "Augmentation of conductor size of 11kV Feeders",
-            "HT AB Cable Conversion",
-            "Control Room Extension / Modification"
-        ]
-        
         overview = {}
-        
-        # Default division for empty categories
-        default_div = "All / N/A"
-        if query.get("division"): default_div = query["division"]
-
-        for head in MASTER_SCHEME_HEADS:
-            group_key = f"{head}|||{default_div}"
-            overview[group_key] = {
-                "scheme_head": head,
-                "division": default_div,
-                "total": 0, "completed": 0, "in_progress": 0, "pending": 0, "last_updated": None
-            }
-        # ------------------------------------------------
 
         for app in apps:
             head = app.get("scheme_head", "Uncategorized")
             div = app.get("division", "Unassigned")
             
-            # Group by Head + Division
             group_key = f"{head}|||{div}" 
             
             if group_key not in overview:
@@ -284,12 +252,10 @@ class ElectricalWorksService(BaseBlockService):
             else:
                 overview[group_key]["pending"] += 1
                 
-            # Track the latest update time
             upd = app.get("updated_at")
             if upd and (overview[group_key]["last_updated"] is None or upd > overview[group_key]["last_updated"]):
                 overview[group_key]["last_updated"] = upd
 
-        # Format the response as a list
         result = []
         for key, stats in overview.items():
             pct = round((stats["completed"] / stats["total"]) * 100) if stats["total"] > 0 else 0
@@ -304,7 +270,6 @@ class ElectricalWorksService(BaseBlockService):
                 "last_updated": stats["last_updated"].strftime("%d/%m/%Y %I:%M %p") if stats["last_updated"] else "N/A"
             })
             
-        # Sort by Scheme Head, then by Division
         result.sort(key=lambda x: (x["scheme_head"], x["division"]))
         return result
 
@@ -327,18 +292,15 @@ class ElectricalWorksService(BaseBlockService):
             voltage = app.get("voltage_level", "Misc")
             status = app.get("status", "in_progress")
 
-            # Group by Scheme Head
             if head not in overview["scheme_heads"]:
                 overview["scheme_heads"][head] = {"total": 0, "completed": 0}
             overview["scheme_heads"][head]["total"] += 1
             if status == "completed": overview["scheme_heads"][head]["completed"] += 1
 
-            # Group by Phase
             if phase not in overview["phases"]:
                 overview["phases"][phase] = 0
             overview["phases"][phase] += 1
             
-            # Group by Voltage Level
             if voltage not in overview["voltage_levels"]:
                 overview["voltage_levels"][voltage] = 0
             overview["voltage_levels"][voltage] += 1
