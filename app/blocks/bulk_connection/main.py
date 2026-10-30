@@ -17,9 +17,18 @@ router = APIRouter(
 def list_applications(
     status: str = Query(None), 
     search: str = Query(None), 
+    zone: str = Query(None),
+    region: str = Query(None),
+    division: str = Query(None),
     current=Depends(get_current_user)
 ):
-    return BulkConnectionService(current).list_all(status=status, search=search)
+    return BulkConnectionService(current).list_all(
+        status=status, 
+        search=search, 
+        zone=zone, 
+        region=region, 
+        division=division
+    )
 
 @router.get("/config")
 def get_config(current=Depends(get_current_user)):
@@ -35,7 +44,6 @@ def get_sla_report(current=Depends(get_current_user)):
         raise HTTPException(status_code=403, detail="Admin access required")
     return BulkConnectionService(current).get_sla_report()
 
-# --- UPDATED SLA SUMMARY ROUTE WITH FILTERS ---
 @router.get("/sla-summary")
 def get_sla_summary(
     zone: str = Query(None),
@@ -46,6 +54,16 @@ def get_sla_summary(
     return BulkConnectionService(current).get_stage_sla_summary(
         zone=zone, region=region, division=division
     )
+
+# --- NEW MONTHLY REPORTS ROUTE ---
+@router.get("/reports")
+def get_monthly_reports(
+    month: str = Query(..., description="Format: YYYY-MM"), 
+    current=Depends(get_current_user)
+):
+    """Fetches all monthly operational reports for a specific month."""
+    return BulkConnectionService(current).get_monthly_reports(month)
+# ---------------------------------
 
 @router.get("/stage-apps")
 def get_stage_apps(

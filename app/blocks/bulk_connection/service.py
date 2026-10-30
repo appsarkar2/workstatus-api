@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 from datetime import datetime, timedelta
 from fastapi import HTTPException
+import calendar
 
 from app.blocks.base_service import BaseBlockService
 
@@ -80,6 +81,7 @@ class BulkConnectionService(BaseBlockService):
             # --- NEW FIELDS SAVED HERE ---
             "application_category": getattr(body, "application_category", "New Connection"),
             "load_category": getattr(body, "load_category", "De-Central Bulk"),
+            "voltage_class": getattr(body, "voltage_class", "LT"),
             # ------------------------------
             
             "zone": getattr(body, "zone", ""),
@@ -120,6 +122,7 @@ class BulkConnectionService(BaseBlockService):
         # --- UPDATE NEW FIELDS ---
         if getattr(body, "application_category", None) is not None: update_data["application_category"] = body.application_category
         if getattr(body, "load_category", None) is not None: update_data["load_category"] = body.load_category
+        if getattr(body, "voltage_class", None) is not None: update_data["voltage_class"] = body.voltage_class
         # -------------------------
 
         if getattr(body, "zone", None) is not None: update_data["zone"] = body.zone
@@ -195,6 +198,10 @@ class BulkConnectionService(BaseBlockService):
 
                 if getattr(body, "deposit_amount", None): stages[i]["deposit_amount"] = body.deposit_amount
                 if getattr(body, "quotation_amount", None): stages[i]["quotation_amount"] = body.quotation_amount
+                
+                # --- SAVE QUOTATION DATES ---
+                if getattr(body, "quotation_issue_date", None): stages[i]["quotation_issue_date"] = body.quotation_issue_date
+                if getattr(body, "quotation_expiry_date", None): stages[i]["quotation_expiry_date"] = body.quotation_expiry_date
 
                 if body.status == "completed":
                     stages[i]["completed_by"] = self.user["username"]
@@ -290,7 +297,6 @@ class BulkConnectionService(BaseBlockService):
         report["details"].sort(key=lambda x: x["total_delay"], reverse=True)
         return report
 
-    # --- UPDATED METHOD WITH ZONE/REGION/DIVISION FILTERS ---
     def get_stage_sla_summary(self, zone=None, region=None, division=None):
         query = {"block_id": self.BLOCK_ID, "status": "in_progress"}
         
@@ -320,3 +326,100 @@ class BulkConnectionService(BaseBlockService):
                         pass
 
         return summary
+
+    def get_monthly_reports(self, month_str: str):
+        """
+        Calculates all monthly reports for a given month.
+        month_str format: "YYYY-MM" (e.g., "2026-10")
+        """
+        try:
+            year, month = map(int, month_str.split('-'))
+            start_date = datetime(year, month, 1)
+            last_day = calendar.monthrange(year, month)[1]
+            end_date = datetime(year, month, last_day, 23, 59, 59)
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid month format. Use YYYY-MM")
+
+        all_apps = list(self.collection.find({"block_id": self.BLOCK_ID}))
+
+        reports = {
+            "receipt": {"count": 0},
+            "disposal": {"count": 0},
+            "pending": {"count": 0},
+            "quotation_deposited": {"count": 0},
+            "demand_summary": [] 
+        }
+
+        demand_matrix = {}
+
+        for app in all_apps:
+            created_at = app.get("created_at")
+            updated_at = app.get("updated_at")
+            
+            # REPORT 7: MONTHLY RECEIPT
+            if created_at and start_date <= created_at <= end_date:
+                reports["receipt"]["count"] += 1
+
+            # REPORT 8 & 9: DISPOSAL & PENDING
+            if created_at and created_at <= end_date:
+                if app.get("status") == "completed" and updated_at and start_date <= updated_at <= end_date:
+                    reports["disposal"]["count"] += 1
+                elif app.get("status") == "in_progress":
+                    reports["pending"]["count"] += 1
+
+            # DEMAND & WITH CD MATRIX
+            voltage = app.get("voltage_class") or app.get("applicant", {}).get("type") or "LT"
+            category = app.get("applicant", {}).get("category") or "Other"
+            
+            demand_str = app.get("proposed_demand_1st", "0")
+            try:
+                demand = int(demand_str) if demand_str else 0
+            except ValueError:
+                demand = 0
+
+            stages = app.get("stages", [])
+            has_cd = any(s["stage_no"] >= 3 and s["status"] in ["completed", "in_progress"] for s in stages)
+            is_effected_this_month = (app.get("status") == "completed" and updated_at and start_date <= updated_at <= end_date)
+            
+            # NEW LOGIC: Include if created this month, or is currently pending, or has CD
+            is_created_this_month = (created_at and start_date <= created_at <= end_date)
+            
+            if is_effected_this_month or has_cd or is_created_this_month or app.get("status") == "in_progress":
+                key = f"{voltage}_{category}"
+                if key not in demand_matrix:
+                    demand_matrix[key] = {
+                        "voltage": voltage, 
+                        "category": category, 
+                        "effected": 0, "effected_kva": 0, 
+                        "with_cd": 0, "with_cd_kva": 0
+                    }
+
+                if is_effected_this_month:
+                    demand_matrix[key]["effected"] += 1
+                    demand_matrix[key]["effected_kva"] += demand
+
+                if has_cd:
+                    demand_matrix[key]["with_cd"] += 1
+                    demand_matrix[key]["with_cd_kva"] += demand
+
+            # REPORT 10: QUOTATION DEPOSITED
+            stage4 = next((s for s in stages if s["stage_no"] == 4), None)
+            if stage4 and stage4.get("status") == "completed":
+                comp_date_str = stage4.get("actual_date") or stage4.get("completed_at")
+                if comp_date_str:
+                    try:
+                        if isinstance(comp_date_str, str):
+                            comp_date = datetime.strptime(comp_date_str[:10], "%Y-%m-%d")
+                        else:
+                            comp_date = comp_date_str
+                            
+                        if start_date <= comp_date <= end_date:
+                            reports["quotation_deposited"]["count"] += 1
+                    except Exception:
+                        pass
+
+        summary_list = list(demand_matrix.values())
+        summary_list.sort(key=lambda x: (x["voltage"], x["category"]))
+        
+        reports["demand_summary"] = summary_list
+        return reports

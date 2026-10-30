@@ -1,21 +1,21 @@
 from pydantic import BaseModel, Field
 from typing import Optional, Dict
 
-
 class ApplicantInfo(BaseModel):
     name: str
     contact: Optional[str] = ""
     email: Optional[str] = ""
     address: Optional[str] = ""
     type: Optional[str] = "LT"
-
+    category: Optional[str] = "Other" # <-- NEW: Industrial, Commercial, Other
 
 class BulkConnectionCreate(BaseModel):
     applicant: ApplicantInfo
     
     # --- NEW FIELDS FOR CATEGORIZATION & FILTERS ---
-    application_category: Optional[str] = "New Connection"  # New Connection, Load Enhancement, Load Decrease
-    load_category: Optional[str] = None                     # Central Bulk, De-Central Bulk
+    application_category: Optional[str] = "New Connection"
+    load_category: Optional[str] = None
+    voltage_class: Optional[str] = "LT" # <-- NEW: Needed for Reports grouping
     zone: Optional[str] = ""
     region: Optional[str] = ""
     # -----------------------------------------------
@@ -36,22 +36,19 @@ class BulkConnectionCreate(BaseModel):
     assigned_to: Optional[str] = None
     remarks: Optional[str] = ""
 
-
 class BulkConnectionUpdate(BaseModel):
     applicant: Optional[ApplicantInfo] = None
     
-    # --- NEW FIELDS FOR CATEGORIZATION & FILTERS ---
     application_category: Optional[str] = None
     load_category: Optional[str] = None
+    voltage_class: Optional[str] = None
     zone: Optional[str] = None
     region: Optional[str] = None
-    # -----------------------------------------------
 
     division: Optional[str] = None
     substation: Optional[str] = None
     connection_type: Optional[str] = None
     
-    # Proposed Demand fields (1st to 5th Year)
     proposed_demand_1st: Optional[str] = None
     proposed_demand_2nd: Optional[str] = None
     proposed_demand_3rd: Optional[str] = None
@@ -61,7 +58,6 @@ class BulkConnectionUpdate(BaseModel):
     documents: Optional[Dict[str, bool]] = None
     assigned_to: Optional[str] = None
     remarks: Optional[str] = None
-
 
 class StageUpdate(BaseModel):
     stage_no: int
@@ -77,3 +73,5 @@ class StageUpdate(BaseModel):
     is_feasible: Optional[bool] = True
     deposit_amount: Optional[str] = None
     quotation_amount: Optional[str] = None
+    quotation_issue_date: Optional[str] = None   # <-- NEW
+    quotation_expiry_date: Optional[str] = None  # <-- NEW
