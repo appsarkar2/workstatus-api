@@ -14,7 +14,11 @@ router = APIRouter(
 )
 
 @router.get("/")
-def list_applications(status: str = Query(None), search: str = Query(None), current=Depends(get_current_user)):
+def list_applications(
+    status: str = Query(None), 
+    search: str = Query(None), 
+    current=Depends(get_current_user)
+):
     return BulkConnectionService(current).list_all(status=status, search=search)
 
 @router.get("/config")
@@ -31,14 +35,29 @@ def get_sla_report(current=Depends(get_current_user)):
         raise HTTPException(status_code=403, detail="Admin access required")
     return BulkConnectionService(current).get_sla_report()
 
+# --- UPDATED SLA SUMMARY ROUTE WITH FILTERS ---
 @router.get("/sla-summary")
-def get_sla_summary(current=Depends(get_current_user)):
-    return BulkConnectionService(current).get_stage_sla_summary()
+def get_sla_summary(
+    zone: str = Query(None),
+    region: str = Query(None),
+    division: str = Query(None),
+    current=Depends(get_current_user)
+):
+    return BulkConnectionService(current).get_stage_sla_summary(
+        zone=zone, region=region, division=division
+    )
 
 @router.get("/stage-apps")
-def get_stage_apps(stage_no: int = Query(...), current=Depends(get_current_user)):
+def get_stage_apps(
+    stage_no: int = Query(...), 
+    current=Depends(get_current_user)
+):
     service = BulkConnectionService(current)
-    apps = list(service.collection.find({"block_id": service.BLOCK_ID, "status": "in_progress", "current_stage": stage_no}))
+    apps = list(service.collection.find({
+        "block_id": service.BLOCK_ID, 
+        "status": "in_progress", 
+        "current_stage": stage_no
+    }))
     
     now = datetime.utcnow()
     results = []
@@ -53,7 +72,6 @@ def get_stage_apps(stage_no: int = Query(...), current=Depends(get_current_user)
         if current_stage_data and current_stage_data.get("target_date"):
             try:
                 target = datetime.strptime(current_stage_data["target_date"], "%Y-%m-%d")
-                # Compare dates only
                 if now.date() > target.date():
                     app["is_breached"] = True
                     app["delay_days"] = (now.date() - target.date()).days

@@ -76,6 +76,14 @@ class BulkConnectionService(BaseBlockService):
             "block_id": self.BLOCK_ID,
             "application_no": generated_ref_no, 
             "applicant": body.applicant.dict(),
+            
+            # --- NEW FIELDS SAVED HERE ---
+            "application_category": getattr(body, "application_category", "New Connection"),
+            "load_category": getattr(body, "load_category", "De-Central Bulk"),
+            # ------------------------------
+            
+            "zone": getattr(body, "zone", ""),
+            "region": getattr(body, "region", ""),
             "division": body.division or "",
             "substation": getattr(body, "substation", ""),
             "connection_type": getattr(body, "connection_type", "Procedure-A"),
@@ -108,6 +116,14 @@ class BulkConnectionService(BaseBlockService):
 
         update_data = {}
         if body.applicant is not None: update_data["applicant"] = body.applicant.dict()
+        
+        # --- UPDATE NEW FIELDS ---
+        if getattr(body, "application_category", None) is not None: update_data["application_category"] = body.application_category
+        if getattr(body, "load_category", None) is not None: update_data["load_category"] = body.load_category
+        # -------------------------
+
+        if getattr(body, "zone", None) is not None: update_data["zone"] = body.zone
+        if getattr(body, "region", None) is not None: update_data["region"] = body.region
         if body.division is not None: update_data["division"] = body.division
         if getattr(body, "substation", None) is not None: update_data["substation"] = body.substation
         if getattr(body, "connection_type", None) is not None: update_data["connection_type"] = body.connection_type
@@ -173,7 +189,7 @@ class BulkConnectionService(BaseBlockService):
                 # --- SAVE STAGE 2 SPECIFIC DATA ---
                 if body.stage_no == 2:
                     stages[i]["inspection_date"] = getattr(body, "inspection_date", None)
-                    stages[i]["eoffice_date"] = getattr(body, "eoffice_date", None) # <-- SAVED HERE
+                    stages[i]["eoffice_date"] = getattr(body, "eoffice_date", None)
                     stages[i]["is_feasible"] = getattr(body, "is_feasible", True)
                 # ----------------------------------
 
@@ -274,8 +290,15 @@ class BulkConnectionService(BaseBlockService):
         report["details"].sort(key=lambda x: x["total_delay"], reverse=True)
         return report
 
-    def get_stage_sla_summary(self):
-        apps = list(self.collection.find({"block_id": self.BLOCK_ID, "status": "in_progress"}))
+    # --- UPDATED METHOD WITH ZONE/REGION/DIVISION FILTERS ---
+    def get_stage_sla_summary(self, zone=None, region=None, division=None):
+        query = {"block_id": self.BLOCK_ID, "status": "in_progress"}
+        
+        if zone: query["zone"] = zone
+        if region: query["region"] = region
+        if division: query["division"] = division
+
+        apps = list(self.collection.find(query))
         now = datetime.utcnow()
         summary = {}
 

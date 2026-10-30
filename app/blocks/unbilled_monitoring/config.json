@@ -1,0 +1,10 @@
+{
+  "id": "unbilled_monitoring",
+  "name": "Unbilled Consumer Monitoring",
+  "code": "UNB",
+  "icon": "⚡",
+  "color": "orange",
+  "active": true,
+  "stages": [], 
+  "documents_required": []
+}

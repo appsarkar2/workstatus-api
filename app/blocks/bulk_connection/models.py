@@ -12,6 +12,14 @@ class ApplicantInfo(BaseModel):
 
 class BulkConnectionCreate(BaseModel):
     applicant: ApplicantInfo
+    
+    # --- NEW FIELDS FOR CATEGORIZATION & FILTERS ---
+    application_category: Optional[str] = "New Connection"  # New Connection, Load Enhancement, Load Decrease
+    load_category: Optional[str] = None                     # Central Bulk, De-Central Bulk
+    zone: Optional[str] = ""
+    region: Optional[str] = ""
+    # -----------------------------------------------
+    
     division: Optional[str] = ""
     substation: Optional[str] = ""
     connection_type: Optional[str] = "Procedure-A"
@@ -31,6 +39,14 @@ class BulkConnectionCreate(BaseModel):
 
 class BulkConnectionUpdate(BaseModel):
     applicant: Optional[ApplicantInfo] = None
+    
+    # --- NEW FIELDS FOR CATEGORIZATION & FILTERS ---
+    application_category: Optional[str] = None
+    load_category: Optional[str] = None
+    zone: Optional[str] = None
+    region: Optional[str] = None
+    # -----------------------------------------------
+
     division: Optional[str] = None
     substation: Optional[str] = None
     connection_type: Optional[str] = None
@@ -57,7 +73,7 @@ class StageUpdate(BaseModel):
     ref_no: Optional[str] = None
     actual_date: Optional[str] = None
     inspection_date: Optional[str] = None
-    eoffice_date: Optional[str] = None    # <-- ADDED THIS FIELD
+    eoffice_date: Optional[str] = None
     is_feasible: Optional[bool] = True
     deposit_amount: Optional[str] = None
     quotation_amount: Optional[str] = None

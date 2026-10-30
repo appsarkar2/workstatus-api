@@ -1,4 +1,5 @@
-# backend/app/main.py
+# D:\workstatus-app\backend\app\main.py
+
 import logging
 import time
 import traceback
@@ -17,7 +18,6 @@ from app.auth import get_current_user
 from app.settings import settings
 from app.database import get_db
 
-
 # ---- Logging setup ----
 logging.basicConfig(
     level=logging.INFO,
@@ -25,15 +25,10 @@ logging.basicConfig(
 )
 logger = logging.getLogger("workstatus")
 
-
 # ---- App ----
 app = FastAPI(title="WorkStatus API", version=settings.app_version)
 
 # ---- CORS Configuration ----
-# Note: allow_origins cannot be ["*"] if allow_credentials=True.
-# We must explicitly list the frontend URLs (local + production).
-
-# You can also set these in your .env file as a comma-separated string
 env_origins = os.getenv("ALLOWED_ORIGINS", "")
 origins_list = [origin.strip() for origin in env_origins.split(",") if origin.strip()] if env_origins else [
     "http://localhost:3000",
@@ -54,7 +49,6 @@ app.add_middleware(
     expose_headers=["*"],
 )
 
-
 # ---- Request logging middleware ----
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
@@ -66,10 +60,7 @@ async def log_requests(request: Request, call_next):
     )
     return response
 
-
 # ---- Global exception handler ----
-# This ensures that even if the server crashes, the CORS headers are still sent
-# so the browser doesn't hide the real error under a fake "CORS error".
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     logger.error(f"Unhandled exception on {request.method} {request.url.path}: {exc}")
@@ -91,21 +82,17 @@ async def global_exception_handler(request: Request, exc: Exception):
         headers=headers,
     )
 
-
 # ---- Routes ----
 app.include_router(auth_router)
 register_all_blocks(app)
-
 
 @app.get("/")
 def root():
     return {"status": "ok", "service": "workstatus-api"}
 
-
 @app.api_route("/health", methods=["GET", "HEAD"])
 def health():
     return {"status": "healthy"}
-
 
 @app.get("/version")
 def version():
@@ -115,32 +102,24 @@ def version():
         "service": "workstatus-api",
     }
 
-
 @app.get("/api/blocks")
 def get_blocks(current=Depends(get_current_user)):
     return {"blocks": list_active_blocks()}
 
-
 # ---- Organization Structure ----
-
 class OrgStructureUpdate(BaseModel):
     zones: Dict
 
 @app.get("/api/org-structure")
 def get_org_structure():
     db = get_db()
-    # Fetch the hierarchy from MongoDB
     org_data = db["org_structure"].find_one({}, {"_id": 0})
-    
     if not org_data:
-        return {"zones": {}} # Return empty if database is empty
-        
+        return {"zones": {}}
     return org_data
-
 
 @app.put("/api/org-structure")
 def update_org_structure(body: OrgStructureUpdate, current=Depends(get_current_user)):
-    # Only super_admin can update the organization structure
     if current.get("role") != "super_admin":
         raise HTTPException(status_code=403, detail="Only Super Admin can update org structure")
         
