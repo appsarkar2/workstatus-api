@@ -1,0 +1,25 @@
+{
+  "id": "revenue_work",
+  "name": "Revenue Tracker",
+  "code": "REV",
+  "icon": "💰",
+  "color": "#10b981",
+  "active": true,
+  "type": "analytics",
+  "stages": [],
+  "kpis": [
+    { "key": "total_amount",    "label": "Total Revenue",      "format": "currency" },
+    { "key": "fully_paid",      "label": "Fully Paid",         "format": "currency" },
+    { "key": "part_paid",       "label": "Part Paid",          "format": "currency" },
+    { "key": "disconnected",    "label": "Disconnected",       "format": "count"   },
+    { "key": "no_action",       "label": "No Action",          "format": "count"   },
+    { "key": "osd_gt_3k",       "label": "OSD > 3K",           "format": "count"   },
+    { "key": "osd_gt_5k",       "label": "OSD > 5K",           "format": "count"   }
+  ],
+  "meters": [
+    { "key": "total_connections", "label": "Total Connections" },
+    { "key": "fully_paid_count",  "label": "Fully Paid Count"  },
+    { "key": "part_paid_count",   "label": "Part Paid Count"   }
+  ],
+  "statuses": ["active", "archived"]
+}
