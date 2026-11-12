@@ -46,7 +46,7 @@ class BaseBlockService:
     # ------------------------------------------------------------
     # Read operations
     # ------------------------------------------------------------
-    def list_all(self, status=None, search=None, zone=None, region=None, division=None):
+    def list_all(self, status=None, search=None, zone=None, region=None, division=None, ccc: str = None, class_type: str = None, pole_type: str = None):
         """Fetch applications, with optional backend filtering."""
         query = self._view_filter()
         
@@ -66,6 +66,12 @@ class BaseBlockService:
             query["region"] = region
         if division:
             query["division"] = division
+        if ccc:
+            query["ccc"] = ccc
+        if class_type:
+            query["class_type"] = class_type
+        if pole_type:
+            query["pole_type"] = pole_type
         # ---------------------------
 
         docs = list(self.collection.find(query).sort("created_at", -1))

@@ -1,0 +1,16 @@
+{
+  "id": "nsc_monitoring",
+  "name": "NSC Monitoring",
+  "path": "/nsc-dashboard.html",
+  "code": "NSC",
+  "icon": "chart",
+  "color": "blue",
+  "active": true,
+  "stages": [
+    { "no": 1, "name": "Application Registration", "dept": "Commercial", "sla_days": 2 },
+    { "no": 2, "name": "Estimate & Deposit", "dept": "Commercial", "sla_days": 3 },
+    { "no": 3, "name": "Sanction & Work Order", "dept": "Technical", "sla_days": 5 },
+    { "no": 4, "name": "Execution & Meter Installation", "dept": "Technical", "sla_days": 7 }
+  ],
+  "documents_required": ["Application Copy", "Identity Proof", "Ownership Proof"]
+}
