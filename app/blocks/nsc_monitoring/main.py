@@ -45,6 +45,7 @@ def get_kpi_dashboard(
         "zone": zone,
         "reg": reg,
         "divn_name": divn_name,
+        "supp_off": ccc_code,
         "ccc_code": ccc_code,
         "conn_class": conn_class,
         "no_of_poles": no_of_poles

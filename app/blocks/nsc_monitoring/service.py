@@ -70,7 +70,7 @@ class NSCMonitoringService(BaseBlockService):
         regions = [r for r in self.collection.distinct('reg') if r is not None]
         divisions = [d for d in self.collection.distinct('divn_name') if d is not None]
         cccs = [c for c in self.collection.distinct('supp_off') if c is not None]
-        classes = [cl for cl in self.collection.distinct('conn_class') if cl is not None]
+        classes = [cl for cl in self.collection.distinct("conn_class") if cl is not None]
         return {
             "zones": sorted([str(x) for x in zones]),
             "regions": sorted([str(x) for x in regions]),
@@ -81,14 +81,14 @@ class NSCMonitoringService(BaseBlockService):
 
     def get_kpi_dashboard(self, filters: dict = None):
         filters = filters or {}
-        query = self._view_filter()
+        query = {}
+
+        supp_off = filters.get("supp_off") or filters.get("ccc_code") or filters.get("ccc")
 
         if filters.get("zone"): query["zone_name"] = {"$regex": filters["zone"], "$options": "i"}
         if filters.get("reg"): query["reg"] = {"$regex": filters["reg"], "$options": "i"}
         if filters.get("divn_name"): query["divn_name"] = {"$regex": filters["divn_name"], "$options": "i"}
-        if filters.get("supp_off"): query["supp_off"] = {"$regex": filters["supp_off"], "$options": "i"}
-        if filters.get("ccc_code"):
-            query["ccc_code"] = filters["ccc_code"]
+        if supp_off: query["supp_off"] = {"$regex": supp_off, "$options": "i"}
         if filters.get("conn_class"): query["conn_class"] = {"$regex": filters["conn_class"], "$options": "i"}
 
         if filters.get("no_of_poles") is not None and filters.get("no_of_poles") != "":
@@ -98,7 +98,13 @@ class NSCMonitoringService(BaseBlockService):
 
         total_cases = len(docs)
         pending_count = 0
-        region_counts = {}
+
+        region_data = list(self.collection.aggregate([
+            {"$match": query},
+            {"$match": {"reg": {"$ne": None}}},
+            {"$group": {"_id": "$reg", "count": {"$sum": 1}}},
+            {"$sort": {"_id": 1}}
+        ]))
 
         total_quot_delay = 0.0
         total_wo_delay = 0.0
@@ -113,35 +119,41 @@ class NSCMonitoringService(BaseBlockService):
             if not conn_type or conn_type == '' or not conn_date or pd.isna(conn_date) or str(conn_date).strip() == '':
                 pending_count += 1
 
-            reg_val = d.get('reg') or d.get('region') or 'Unknown'
-            region_counts[reg_val] = region_counts.get(reg_val, 0) + 1
-
-            def parse_dt(val):
+            def parse_date_dd_mm_first(val):
                 if not val or pd.isna(val):
                     return None
                 s = str(val).strip()
                 if not s or s.lower() == 'nan':
                     return None
-                for fmt in ("%Y-%m-%d", "%d-%m-%Y", "%Y/%m/%d", "%d/%m/%Y"):
+                for fmt in ("%d-%m-%Y", "%Y-%m-%d"):
                     try:
                         return datetime.strptime(s[:10], fmt)
                     except ValueError:
                         continue
                 return None
 
-            app_dt = parse_dt(d.get('application_date') or d.get('app_date'))
-            quot_dt = parse_dt(d.get('quotation_issue_date') or d.get('quot_date') or d.get('quotation_date'))
-            wo_dt = parse_dt(d.get('wo_creation_date') or d.get('wo_date') or d.get('work_order_date'))
-            rel_dt = parse_dt(d.get('connection_date') or d.get('conn_date') or d.get('release_date'))
+            quot_issue_val = d.get('quotation_issue_date') or d.get('quot_date') or d.get('quotation_date')
+            quot_due_val = d.get('quotation_due_date') or d.get('quotation_expiry_date') or d.get('due_date')
 
-            if app_dt and quot_dt:
-                diff = (quot_dt - app_dt).days
+            quot_issue_dt = parse_date_dd_mm_first(quot_issue_val)
+            quot_due_dt = parse_date_dd_mm_first(quot_due_val)
+            app_dt = parse_date_dd_mm_first(d.get('application_date') or d.get('app_date'))
+            wo_dt = parse_date_dd_mm_first(d.get('wo_creation_date') or d.get('wo_date') or d.get('work_order_date'))
+            rel_dt = parse_date_dd_mm_first(d.get('connection_date') or d.get('conn_date') or d.get('release_date'))
+
+            if quot_issue_dt and quot_due_dt:
+                diff = (quot_due_dt - quot_issue_dt).days
+                if diff >= 0:
+                    total_quot_delay += diff
+                    quot_count += 1
+            elif app_dt and quot_issue_dt:
+                diff = (quot_issue_dt - app_dt).days
                 if diff >= 0:
                     total_quot_delay += diff
                     quot_count += 1
 
-            if quot_dt and wo_dt:
-                diff = (wo_dt - quot_dt).days
+            if quot_issue_dt and wo_dt:
+                diff = (wo_dt - quot_issue_dt).days
                 if diff >= 0:
                     total_wo_delay += diff
                     wo_count += 1
@@ -158,7 +170,6 @@ class NSCMonitoringService(BaseBlockService):
         wo_delay = round(total_wo_delay / wo_count, 2) if wo_count > 0 else 0.00
         conn_delay = round(total_conn_delay / conn_count, 2) if conn_count > 0 else 0.00
 
-        region_data = [{"_id": k, "count": v} for k, v in sorted(region_counts.items())]
         items = docs[:100]
 
         return {

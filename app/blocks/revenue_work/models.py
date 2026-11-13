@@ -8,6 +8,7 @@ class RevenueEntryCreate(BaseModel):
     region: str
     division: str
     ccc: str
+    consumer_class: Optional[str] = "All Classes"  # Industrial, Domestic, Commercial, Govt, Others
     report_month: str  # YYYY-MM
     total_count: int = 0
     total_amount_cr: float = 0.0
@@ -30,6 +31,7 @@ class RevenueEntryUpdate(BaseModel):
     region: Optional[str] = None
     division: Optional[str] = None
     ccc: Optional[str] = None
+    consumer_class: Optional[str] = None
     report_month: Optional[str] = None
     total_count: Optional[int] = None
     total_amount_cr: Optional[float] = None

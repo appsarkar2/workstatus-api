@@ -13,13 +13,14 @@ class RevenueWorkService(BaseBlockService):
     def create(self, body):
         existing = self.collection.find_one({
             'division': body.division,
+            'consumer_class': body.consumer_class,
             'report_month': body.report_month,
             'block_id': self.BLOCK_ID,
         })
         if existing:
             raise HTTPException(
                 status_code=400,
-                detail=f'Entry already exists for {body.division} / {body.report_month}',
+                detail=f'Entry already exists for {body.division} / {body.consumer_class} / {body.report_month}',
             )
         now = datetime.utcnow()
         doc = {
@@ -28,6 +29,7 @@ class RevenueWorkService(BaseBlockService):
             'region': body.region,
             'division': body.division,
             'ccc': body.ccc,
+            'consumer_class': body.consumer_class,
             'report_month': body.report_month,
             'total_count': body.total_count,
             'total_amount_cr': body.total_amount_cr,
@@ -65,6 +67,7 @@ class RevenueWorkService(BaseBlockService):
                 'region': str(row.get('region', 'All Regions')),
                 'division': str(row.get('division', 'Unknown')),
                 'ccc': str(row.get('ccc', 'All CCC')),
+                'consumer_class': str(row.get('consumer_class', 'All Classes')),
                 'report_month': str(row.get('report_month', '2026-10')),
                 'total_count': int(row.get('total_count', 0)),
                 'total_amount_cr': float(row.get('total_amount_cr', 0.0)),
@@ -95,6 +98,8 @@ class RevenueWorkService(BaseBlockService):
         zone: Optional[str] = None,
         region: Optional[str] = None,
         division: Optional[str] = None,
+        ccc: Optional[str] = None,
+        consumer_class: Optional[str] = None,
         month: Optional[str] = None,
     ):
         match_stage = {'block_id': self.BLOCK_ID}
@@ -104,6 +109,10 @@ class RevenueWorkService(BaseBlockService):
             match_stage['region'] = region
         if division:
             match_stage['division'] = division
+        if ccc:
+            match_stage['ccc'] = ccc
+        if consumer_class:
+            match_stage['consumer_class'] = consumer_class
         if month:
             match_stage['report_month'] = month
 
@@ -169,6 +178,7 @@ class RevenueWorkService(BaseBlockService):
         regions = self.collection.distinct('region', {'block_id': self.BLOCK_ID})
         divisions = self.collection.distinct('division', {'block_id': self.BLOCK_ID})
         cccs = self.collection.distinct('ccc', {'block_id': self.BLOCK_ID})
+        consumer_classes = self.collection.distinct('consumer_class', {'block_id': self.BLOCK_ID})
 
         return {
             'totals': totals,
@@ -178,5 +188,6 @@ class RevenueWorkService(BaseBlockService):
                 'regions': [r for r in regions if r],
                 'divisions': [d for d in divisions if d],
                 'cccs': [c for c in cccs if c],
+                'consumer_classes': [cc for cc in consumer_classes if cc],
             }
         }
