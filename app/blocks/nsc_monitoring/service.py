@@ -50,15 +50,14 @@ class NSCMonitoringService(BaseBlockService):
             raise HTTPException(status_code=403, detail="Only admins can delete")
         result = self.collection.delete_many({})
         return {"message": "All records deleted successfully", "deleted_count": result.deleted_count}
+
     async def bulk_upload_csv(self, file):
         try:
-            contents = await file.read()
-            df = pd.read_csv(pd.io.common.BytesIO(contents))
-            df.columns = [c.lower() for c in df.columns]
-            data = df.to_dict('records')
-            
             self.collection.delete_many({})
-            
+            df = pd.read_csv(file.file, dtype=str)
+            df.columns = [c.lower() for c in df.columns]
+            df = df.fillna("")
+            data = df.to_dict('records')
             if data:
                 self.collection.insert_many(data)
             return {"message": "Data uploaded successfully", "count": len(data)}
@@ -66,112 +65,200 @@ class NSCMonitoringService(BaseBlockService):
             raise HTTPException(status_code=400, detail=str(e))
 
     def get_filter_options(self):
-        zones = [z for z in self.collection.distinct('zone_name') if z is not None]
-        regions = [r for r in self.collection.distinct('reg') if r is not None]
-        divisions = [d for d in self.collection.distinct('divn_name') if d is not None]
-        cccs = [c for c in self.collection.distinct('supp_off') if c is not None]
-        classes = [cl for cl in self.collection.distinct('conn_class') if cl is not None]
         return {
-            "zones": sorted([str(x) for x in zones]),
-            "regions": sorted([str(x) for x in regions]),
-            "divisions": sorted([str(x) for x in divisions]),
-            "cccs": sorted([str(x) for x in cccs]),
-            "classes": sorted([str(x) for x in classes])
+            "zones": sorted([str(z) for z in self.collection.distinct('zone_name') if z is not None]),
+            "regions": sorted([str(r) for r in self.collection.distinct('reg') if r is not None]),
+            "divisions": sorted([str(d) for d in self.collection.distinct('divn_name') if d is not None]),
+            "cccs": sorted([str(c) for c in self.collection.distinct('supp_off') if c is not None]),
+            "classes": sorted([str(cl) for cl in self.collection.distinct('conn_class') if cl is not None]),
+            "applicant_types": sorted([str(a) for a in self.collection.distinct("applicant_type") if a and a != "(null)"])
         }
 
     def get_kpi_dashboard(self, filters: dict = None):
         filters = filters or {}
-        query = self._view_filter()
+        query = {}
+        group_by = filters.get("group_by", "reg")
+        if group_by == "reg":
+            group_by = "region"
 
-        if filters.get("zone"): query["zone_name"] = {"$regex": filters["zone"], "$options": "i"}
-        if filters.get("reg"): query["reg"] = {"$regex": filters["reg"], "$options": "i"}
-        if filters.get("divn_name"): query["divn_name"] = {"$regex": filters["divn_name"], "$options": "i"}
-        if filters.get("supp_off"): query["supp_off"] = {"$regex": filters["supp_off"], "$options": "i"}
-        if filters.get("ccc_code"):
-            query["ccc_code"] = filters["ccc_code"]
-        if filters.get("conn_class"): query["conn_class"] = {"$regex": filters["conn_class"], "$options": "i"}
+        if filters.get("zone") and filters["zone"].strip() != "": 
+            query["zone"] = {"$regex": filters["zone"].strip(), "$options": "i"}
+        if filters.get("reg") and filters["reg"].strip() != "": 
+            query["reg"] = {"$regex": filters["reg"].strip(), "$options": "i"}
+        if filters.get("divn_name") and filters["divn_name"].strip() != "": 
+            query["divn_name"] = {"$regex": filters["divn_name"].strip(), "$options": "i"}
+        if filters.get("supp_off") and filters["supp_off"].strip() != "": 
+            query["supp_off"] = {"$regex": filters["supp_off"].strip(), "$options": "i"}
+        if filters.get("ccc_code") and str(filters["ccc_code"]).strip() != "": 
+            query["ccc_code"] = str(filters["ccc_code"]).strip()
+        if filters.get("conn_class") and filters["conn_class"].strip() != "": 
+            query["conn_class"] = filters["conn_class"].strip()
+        if filters.get("applicant_type") and filters["applicant_type"].strip() != "": 
+            query["applicant_type"] = {"$regex": filters["applicant_type"].strip(), "$options": "i"}
 
-        if filters.get("no_of_poles") is not None and filters.get("no_of_poles") != "":
-            query['no_of_poles'] = filters['no_of_poles']
+        if "reg" in query:
+            reg_val = query.pop("reg")
+            query["$or"] = [{"reg": reg_val}, {"region": reg_val}]
+
+        total_cases = self.collection.count_documents(query)
+
+        # Pending Count (Has Coll Date)
+        pending_count_query = dict(query)
+        pending_count_query["$and"] = [
+            {"coll_date": {"$ne": None}},
+            {"coll_date": {"$ne": ""}},
+            {"coll_date": {"$ne": "(null)"}}
+        ]
+        pending_count = self.collection.count_documents(pending_count_query)
+
+        # Pending Application (No Quotation Issue Date)
+        pending_app_query = dict(query)
+        pending_app_query["$and"] = [
+            {"$or": [
+                {"quotation_issue_date": None},
+                {"quotation_issue_date": ""},
+                {"quotation_issue_date": "(null)"}
+            ]}
+        ]
+        pending_application = self.collection.count_documents(pending_app_query)
+
+        # Pending WO (No WO Creation Date)
+        pending_wo_query = dict(query)
+        pending_wo_query["$and"] = [
+            {"$or": [
+                {"wo_creation_date": None},
+                {"wo_creation_date": ""},
+                {"wo_creation_date": "(null)"}
+            ]}
+        ]
+        pending_wo = self.collection.count_documents(pending_wo_query)
 
         docs = list(self.collection.find(query))
 
-        total_cases = len(docs)
-        pending_count = 0
-        region_counts = {}
-
-        total_quot_delay = 0.0
-        total_wo_delay = 0.0
-        total_conn_delay = 0.0
-        quot_count = 0
-        wo_count = 0
-        conn_count = 0
+        valid_qtn_delays = []
+        valid_wo_delays = []
 
         for d in docs:
-            conn_type = d.get('conn_type')
-            conn_date = d.get('connection_date') or d.get('conn_date') or d.get('release_date')
-            if not conn_type or conn_type == '' or not conn_date or pd.isna(conn_date) or str(conn_date).strip() == '':
-                pending_count += 1
-
-            reg_val = d.get('reg') or d.get('region') or 'Unknown'
-            region_counts[reg_val] = region_counts.get(reg_val, 0) + 1
-
             def parse_dt(val):
                 if not val or pd.isna(val):
                     return None
                 s = str(val).strip()
-                if not s or s.lower() == 'nan':
+                if not s or s.lower() == 'nan' or s.lower() == '(null)':
                     return None
-                for fmt in ("%Y-%m-%d", "%d-%m-%Y", "%Y/%m/%d", "%d/%m/%Y"):
+                for fmt in ("%d/%m/%Y %H:%M", "%Y-%m-%d %H:%M", "%d-%m-%Y %H:%M", "%Y/%m/%d %H:%M", "%Y-%m-%d", "%d-%m-%Y", "%Y/%m/%d", "%d/%m/%Y"):
                     try:
-                        return datetime.strptime(s[:10], fmt)
+                        return datetime.strptime(s[:16], fmt)
                     except ValueError:
-                        continue
+                        try:
+                            return datetime.strptime(s[:10], fmt)
+                        except ValueError:
+                            continue
                 return None
 
-            app_dt = parse_dt(d.get('application_date') or d.get('app_date'))
-            quot_dt = parse_dt(d.get('quotation_issue_date') or d.get('quot_date') or d.get('quotation_date'))
-            wo_dt = parse_dt(d.get('wo_creation_date') or d.get('wo_date') or d.get('work_order_date'))
-            rel_dt = parse_dt(d.get('connection_date') or d.get('conn_date') or d.get('release_date'))
+            creation_dt = parse_dt(d.get('creation_date') or d.get('CREATION_DATE'))
+            quot_issue_dt = parse_dt(d.get('quotation_issue_date') or d.get('QUOTATION_ISSUE_DATE'))
+            wo_creation_dt = parse_dt(d.get('wo_creation_date') or d.get('WO_CREATION_DATE'))
+            coll_dt = parse_dt(d.get('coll_date') or d.get('COLL_DATE') or d.get('connection_date') or d.get('conn_date') or d.get('release_date'))
 
-            if app_dt and quot_dt:
-                diff = (quot_dt - app_dt).days
-                if diff >= 0:
-                    total_quot_delay += diff
-                    quot_count += 1
+            # Quotation Delay: QUOTATION_ISSUE_DATE - CREATION_DATE
+            if creation_dt and quot_issue_dt:
+                diff = (quot_issue_dt - creation_dt).days
+                if diff > 0:
+                    valid_qtn_delays.append(diff)
 
-            if quot_dt and wo_dt:
-                diff = (wo_dt - quot_dt).days
-                if diff >= 0:
-                    total_wo_delay += diff
-                    wo_count += 1
-
-            if wo_dt and rel_dt:
-                diff = (rel_dt - wo_dt).days
-                if diff >= 0:
-                    total_conn_delay += diff
-                    conn_count += 1
+            # WO Delay: WO_CREATION_DATE - COLL_DATE
+            if coll_dt:
+                if wo_creation_dt:
+                    diff = (wo_creation_dt - coll_dt).days
+                    if diff > 0:
+                        valid_wo_delays.append(diff)
+                else:
+                    diff = (datetime.now() - coll_dt).days
+                    valid_wo_delays.append(diff)
 
             d['_id'] = str(d['_id'])
 
-        quotation_delay = round(total_quot_delay / quot_count, 2) if quot_count > 0 else 0.00
-        wo_delay = round(total_wo_delay / wo_count, 2) if wo_count > 0 else 0.00
-        conn_delay = round(total_conn_delay / conn_count, 2) if conn_count > 0 else 0.00
+        quotation_delay = round(sum(valid_qtn_delays) / len(valid_qtn_delays), 2) if valid_qtn_delays else 0.00
+        wo_delay = round(sum(valid_wo_delays) / len(valid_wo_delays), 2) if valid_wo_delays else 0.00
 
-        region_data = [{"_id": k, "count": v} for k, v in sorted(region_counts.items())]
-        items = docs[:100]
+        # Aggregation pipeline for Table Data
+        region_pipeline = [
+            {"$match": query},
+            {
+                "$group": {
+                    "_id": {"$ifNull": [f"${group_by}", "Unknown"]},
+                    "count": {"$sum": 1},
+                    "pending_count": {
+                        "$sum": {
+                            "$cond": {
+                                "if": {
+                                    "$and": [
+                                        {"$ne": ["$coll_date", None]},
+                                        {"$ne": ["$coll_date", ""]},
+                                        {"$ne": ["$coll_date", "(null)"]}
+                                    ]
+                                },
+                                "then": 1,
+                                "else": 0
+                            }
+                        }
+                    },
+                    "pending_application": {
+                        "$sum": {
+                            "$cond": {
+                                "if": {
+                                    "$or": [
+                                        {"$eq": ["$quotation_issue_date", None]},
+                                        {"$eq": ["$quotation_issue_date", ""]},
+                                        {"$eq": ["$quotation_issue_date", "(null)"]}
+                                    ]
+                                },
+                                "then": 1,
+                                "else": 0
+                            }
+                        }
+                    },
+                    "pending_wo": {
+                        "$sum": {
+                            "$cond": {
+                                "if": {
+                                    "$or": [
+                                        {"$eq": ["$wo_creation_date", None]},
+                                        {"$eq": ["$wo_creation_date", ""]},
+                                        {"$eq": ["$wo_creation_date", "(null)"]}
+                                    ]
+                                },
+                                "then": 1,
+                                "else": 0
+                            }
+                        }
+                    }
+                }
+            },
+            {"$sort": {"count": -1}}
+        ]
+        region_data_agg = list(self.collection.aggregate(region_pipeline))
+        region_data = [
+            {
+                "_id": r["_id"] or "Unknown",
+                "count": r["count"],
+                "pending_count": r.get("pending_count", 0),
+                "pending_application": r.get("pending_application", 0),
+                "pending_wo": r.get("pending_wo", 0)
+            }
+            for r in region_data_agg
+        ]
 
         return {
-            'total_cases': total_cases,
-            'pending_count': pending_count,
-            'region_data': region_data,
-            'items': items,
-            'avg_delay': round((quotation_delay + wo_delay + conn_delay) / 3, 2),
-            'quotation_delay': quotation_delay,
-            'wo_delay': wo_delay,
-            'conn_delay': conn_delay
+            "total_cases": total_cases,
+            "pending_count": pending_count,
+            "pending_wo": pending_wo,
+            "pending_application": pending_application,
+            "quotation_delay": quotation_delay,
+            "wo_delay": wo_delay,
+            "conn_delay": 0.00,
+            "region_data": region_data
         }
-
 
     def get_pending_nsc(self, filters: dict = None):
         filters = filters or {}
