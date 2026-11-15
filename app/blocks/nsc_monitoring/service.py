@@ -102,7 +102,6 @@ class NSCMonitoringService(BaseBlockService):
 
         total_cases = self.collection.count_documents(query)
 
-        # Pending Count (Has Coll Date)
         pending_count_query = dict(query)
         pending_count_query["$and"] = [
             {"coll_date": {"$ne": None}},
@@ -111,7 +110,6 @@ class NSCMonitoringService(BaseBlockService):
         ]
         pending_count = self.collection.count_documents(pending_count_query)
 
-        # Pending Application (No Quotation Issue Date)
         pending_app_query = dict(query)
         pending_app_query["$and"] = [
             {"$or": [
@@ -122,7 +120,6 @@ class NSCMonitoringService(BaseBlockService):
         ]
         pending_application = self.collection.count_documents(pending_app_query)
 
-        # Pending WO (No WO Creation Date)
         pending_wo_query = dict(query)
         pending_wo_query["$and"] = [
             {"$or": [
@@ -160,13 +157,11 @@ class NSCMonitoringService(BaseBlockService):
             wo_creation_dt = parse_dt(d.get('wo_creation_date') or d.get('WO_CREATION_DATE'))
             coll_dt = parse_dt(d.get('coll_date') or d.get('COLL_DATE') or d.get('connection_date') or d.get('conn_date') or d.get('release_date'))
 
-            # Quotation Delay: QUOTATION_ISSUE_DATE - CREATION_DATE
             if creation_dt and quot_issue_dt:
                 diff = (quot_issue_dt - creation_dt).days
                 if diff > 0:
                     valid_qtn_delays.append(diff)
 
-            # WO Delay: WO_CREATION_DATE - COLL_DATE
             if coll_dt:
                 if wo_creation_dt:
                     diff = (wo_creation_dt - coll_dt).days
@@ -181,7 +176,6 @@ class NSCMonitoringService(BaseBlockService):
         quotation_delay = round(sum(valid_qtn_delays) / len(valid_qtn_delays), 2) if valid_qtn_delays else 0.00
         wo_delay = round(sum(valid_wo_delays) / len(valid_wo_delays), 2) if valid_wo_delays else 0.00
 
-        # Aggregation pipeline for Table Data
         region_pipeline = [
             {"$match": query},
             {
@@ -198,8 +192,7 @@ class NSCMonitoringService(BaseBlockService):
                                         {"$ne": ["$coll_date", "(null)"]}
                                     ]
                                 },
-                                "then": 1,
-                                "else": 0
+                                "then": 1, "else": 0
                             }
                         }
                     },
@@ -213,8 +206,7 @@ class NSCMonitoringService(BaseBlockService):
                                         {"$eq": ["$quotation_issue_date", "(null)"]}
                                     ]
                                 },
-                                "then": 1,
-                                "else": 0
+                                "then": 1, "else": 0
                             }
                         }
                     },
@@ -228,8 +220,7 @@ class NSCMonitoringService(BaseBlockService):
                                         {"$eq": ["$wo_creation_date", "(null)"]}
                                     ]
                                 },
-                                "then": 1,
-                                "else": 0
+                                "then": 1, "else": 0
                             }
                         }
                     }
@@ -292,52 +283,109 @@ class NSCMonitoringService(BaseBlockService):
 
         return {'total': len(docs), 'items': docs}
 
-    def get_weekly_deposit_disposal(self, filters: dict = None):
+    def get_pending_details(self, filters: dict = None):
         filters = filters or {}
-        query = self._view_filter()
+        query = {}
+        
+        if filters.get("zone") and filters["zone"].strip() != "": 
+            query["zone"] = {"$regex": filters["zone"].strip(), "$options": "i"}
+        if filters.get("reg") and filters["reg"].strip() != "": 
+            query["reg"] = {"$regex": filters["reg"].strip(), "$options": "i"}
+        if filters.get("divn_name") and filters["divn_name"].strip() != "": 
+            query["divn_name"] = {"$regex": filters["divn_name"].strip(), "$options": "i"}
+        if filters.get("supp_off") and filters["supp_off"].strip() != "": 
+            query["supp_off"] = {"$regex": filters["supp_off"].strip(), "$options": "i"}
+        if filters.get("ccc_code") and str(filters["ccc_code"]).strip() != "": 
+            query["ccc_code"] = str(filters["ccc_code"]).strip()
+        if filters.get("conn_class") and filters["conn_class"].strip() != "": 
+            query["conn_class"] = filters["conn_class"].strip()
+        if filters.get("applicant_type") and filters["applicant_type"].strip() != "": 
+            query["applicant_type"] = {"$regex": filters["applicant_type"].strip(), "$options": "i"}
 
-        if filters.get('region'):
-            query['region'] = filters['region']
-        if filters.get('division'):
-            query['division'] = filters['division']
-        if filters.get('ccc'):
-            query['ccc'] = filters['ccc']
+        if "reg" in query:
+            reg_val = query.pop("reg")
+            query["$or"] = [{"reg": reg_val}, {"region": reg_val}]
 
-        docs = list(self.collection.find(query, {'weekly_data': 1, 'region': 1, 'division': 1}))
+        status_type = filters.get("status_type")
+        
+        if status_type == "pending_wo":
+            query["$and"] = [
+                {"$or": [
+                    {"wo_creation_date": None},
+                    {"wo_creation_date": ""},
+                    {"wo_creation_date": "(null)"}
+                ]}
+            ]
+        elif status_type == "pending_conn":
+            query["$and"] = [
+                {"$and": [
+                    {"coll_date": {"$ne": None}}, 
+                    {"coll_date": {"$ne": ""}}, 
+                    {"coll_date": {"$ne": "(null)"}}
+                ]},
+                {"$or": [
+                    {"wo_creation_date": None}, 
+                    {"wo_creation_date": ""}, 
+                    {"wo_creation_date": "(null)"}
+                ]}
+            ]
+        elif status_type == "pending_app":
+            query["$and"] = [
+                {"$or": [
+                    {"quotation_issue_date": None},
+                    {"quotation_issue_date": ""},
+                    {"quotation_issue_date": "(null)"}
+                ]}
+            ]
 
-        weekly_aggregates = {}
-        for doc in docs:
-            w_data = doc.get('weekly_data', [])
-            if not isinstance(w_data, list):
-                continue
-            for entry in w_data:
-                if not isinstance(entry, dict):
-                    continue
-                week = entry.get('week') or entry.get('week_no') or entry.get('period') or 'Unknown'
-                deposited = float(entry.get('deposited') or entry.get('deposit') or 0)
-                disposed = float(entry.get('disposed') or entry.get('disposal') or 0)
+        docs = list(self.collection.find(query))
+        results = []
 
-                if week not in weekly_aggregates:
-                    weekly_aggregates[week] = {
-                        'week': week,
-                        'total_deposited': 0.0,
-                        'total_disposed': 0.0,
-                        'count': 0
-                    }
-                weekly_aggregates[week]['total_deposited'] += deposited
-                weekly_aggregates[week]['total_disposed'] += disposed
-                weekly_aggregates[week]['count'] += 1
+        for d in docs:
+            def parse_dt(val):
+                if not val or pd.isna(val):
+                    return None
+                s = str(val).strip()
+                if not s or s.lower() == 'nan' or s.lower() == '(null)':
+                    return None
+                for fmt in ("%d/%m/%Y %H:%M", "%Y-%m-%d %H:%M", "%d-%m-%Y %H:%M", "%Y/%m/%d %H:%M", "%Y-%m-%d", "%d-%m-%Y", "%Y/%m/%d", "%d/%m/%Y"):
+                    try:
+                        return datetime.strptime(s[:16], fmt)
+                    except ValueError:
+                        try:
+                            return datetime.strptime(s[:10], fmt)
+                        except ValueError:
+                            continue
+                return None
 
-        result_list = []
-        for week, data in sorted(weekly_aggregates.items(), key=lambda x: str(x[0])):
-            cnt = data['count'] if data['count'] > 0 else 1
-            result_list.append({
-                'week': week,
-                'avg_deposited': round(data['total_deposited'] / cnt, 2),
-                'avg_disposed': round(data['total_disposed'] / cnt, 2),
-                'total_deposited': round(data['total_deposited'], 2),
-                'total_disposed': round(data['total_disposed'], 2),
-                'entries_count': data['count']
+            coll_dt = parse_dt(d.get('coll_date') or d.get('COLL_DATE') or d.get('connection_date') or d.get('conn_date') or d.get('release_date'))
+            creation_dt = parse_dt(d.get('creation_date') or d.get('CREATION_DATE'))
+
+            delay_as_on_today = 0
+            if coll_dt:
+                delay_as_on_today = (datetime.now() - coll_dt).days
+            elif creation_dt:
+                delay_as_on_today = (datetime.now() - creation_dt).days
+
+            wo_status = "Not Issued"
+            wo_date = d.get("wo_creation_date") or d.get("WO_CREATION_DATE")
+            if wo_date and str(wo_date).strip() not in ["", "(null)", "None", "nan"]:
+                wo_status = "Issued"
+
+            results.append({
+                "appl_no": d.get("appl_no") or d.get("APPL_NO") or d.get("application_no"),
+                "name": d.get("name") or d.get("NAME") or d.get("applicant_name"),
+                "division": d.get("divn_name") or d.get("division"),
+                "ccc": d.get("supp_off") or d.get("ccc") or d.get("ccc_code"),
+                "creation_date": d.get("creation_date") or d.get("CREATION_DATE"),
+                "coll_date": d.get("coll_date") or d.get("COLL_DATE"),
+                "wo_creation_date": wo_date,
+                "agency_name": d.get("agency_name") or d.get("AGENCY_NAME") or "-",
+                "wo_status": wo_status,
+                "delay_as_on_today": delay_as_on_today
             })
 
-        return {'weekly_summary': result_list}
+        # Sort by delay_as_on_today in descending order (highest delay first)
+        results = sorted(results, key=lambda x: x["delay_as_on_today"], reverse=True)
+
+        return {"total": len(results), "items": results}

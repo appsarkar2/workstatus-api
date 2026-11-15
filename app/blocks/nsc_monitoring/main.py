@@ -30,6 +30,7 @@ def get_stats(current=Depends(get_current_user)):
     service = NSCMonitoringService(current)
     return service.stats()
 
+# --- MISSING KPI ROUTE ADDED HERE ---
 @router.get("/kpi-dashboard")
 def get_kpi_dashboard(
     zone: str = Query(None),
@@ -38,7 +39,6 @@ def get_kpi_dashboard(
     ccc_code: str = Query(None),
     conn_class: str = Query(None),
     applicant_type: str = Query(None),
-    no_of_poles: str = Query(None),
     group_by: str = Query("reg"),
     current=Depends(get_current_user)
 ):
@@ -49,11 +49,34 @@ def get_kpi_dashboard(
         "divn_name": divn_name,
         "ccc_code": ccc_code,
         "conn_class": conn_class,
-        "no_of_poles": no_of_poles,
         "applicant_type": applicant_type,
         "group_by": group_by
     }
     return service.get_kpi_dashboard(filters=filters)
+# -----------------------------------
+
+@router.get("/pending-details")
+def get_pending_details(
+    zone: str = Query(None),
+    reg: str = Query(None),
+    divn_name: str = Query(None),
+    ccc_code: str = Query(None),
+    conn_class: str = Query(None),
+    applicant_type: str = Query(None),
+    status_type: str = Query(None),
+    current=Depends(get_current_user)
+):
+    service = NSCMonitoringService(current)
+    filters = {
+        "zone": zone,
+        "reg": reg,
+        "divn_name": divn_name,
+        "ccc_code": ccc_code,
+        "conn_class": conn_class,
+        "applicant_type": applicant_type,
+        "status_type": status_type
+    }
+    return service.get_pending_details(filters=filters)
 
 @router.get("/weekly-trend")
 def get_weekly_trend(
@@ -128,6 +151,8 @@ def get_filter_options(current=Depends(get_current_user)):
     service = NSCMonitoringService(current)
     return service.get_filter_options()
 
+# --- PARAMETERIZED ROUTES MUST BE AT THE BOTTOM ---
+
 @router.get("/{app_id}")
 def get_one(app_id: str, current=Depends(get_current_user)):
     if not app_id or len(app_id) < 12:
@@ -149,4 +174,3 @@ def update(app_id: str, current=Depends(get_current_user)):
 def delete(app_id: str, current=Depends(get_current_user)):
     service = NSCMonitoringService(current)
     return service.delete(app_id)
-
