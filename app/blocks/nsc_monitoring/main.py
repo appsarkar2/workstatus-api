@@ -133,6 +133,8 @@ def get_weekly_deposit_disposal(
 
 @router.post("/bulk-upload")
 async def bulk_upload_csv(file: UploadFile = File(...), current=Depends(get_current_user)):
+    if current.get("username") != "superadmin":
+        raise HTTPException(status_code=403, detail="Only superadmin can upload CSV files")
     service = NSCMonitoringService(current)
     return await service.bulk_upload_csv(file)
 
