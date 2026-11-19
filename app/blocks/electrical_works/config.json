@@ -13,5 +13,41 @@
     { "no": 5, "name": "Execution & Installation", "dept": "Commerce", "sla_days": 10 },
     { "no": 6, "name": "Testing, Handover & Closure", "dept": "Commerce", "sla_days": 3 }
   ],
-  "documents_required": ["Application Form", "Site Map", "Load Approval"]
+  "documents_required": ["Application Form", "Site Map", "Load Approval"],
+  "categories": [
+    "33KV Second Source / Tapping Source Elemination",
+    "Augmentation of Conductor Size",
+    "Augmentation of conductor size of 11kV Feeders",
+    "Augmentation of conductor size of 33kV Feeders",
+    "Augmentation of conductor size of 33kV Switchyard",
+    "Bifurcation of 11kV Feeders",
+    "Control Room Extension / Modification",
+    "HT AB Cable Conversion",
+    "New SS",
+    "PTR Augmentation / New PTR"
+  ],
+  "scheme_heads": [
+    "33KV Second Source / Tapping Source Elemination",
+    "Augmentation of Conductor Size",
+    "Augmentation of conductor size of 11kV Feeders",
+    "Augmentation of conductor size of 33kV Feeders",
+    "Augmentation of conductor size of 33kV Switchyard",
+    "Bifurcation of 11kV Feeders",
+    "Control Room Extension / Modification",
+    "HT AB Cable Conversion",
+    "New SS",
+    "PTR Augmentation / New PTR"
+  ],
+  "scheme_voltage_map": {
+    "33KV Second Source / Tapping Source Elemination": "33 KV",
+    "Augmentation of Conductor Size": "Misc",
+    "Augmentation of conductor size of 11kV Feeders": "11 KV",
+    "Augmentation of conductor size of 33kV Feeders": "33 KV",
+    "Augmentation of conductor size of 33kV Switchyard": "33 KV",
+    "Bifurcation of 11kV Feeders": "11 KV",
+    "Control Room Extension / Modification": "Misc",
+    "HT AB Cable Conversion": "11 KV",
+    "New SS": "Misc",
+    "PTR Augmentation / New PTR": "Misc"
+  }
 }

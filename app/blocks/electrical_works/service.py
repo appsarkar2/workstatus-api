@@ -97,10 +97,10 @@ class ElectricalWorksService(BaseBlockService):
             "target_date": body.target_date,
             "eoffice_ref": body.eoffice_ref,
             "detailed_status": body.detailed_status,
+            "status": body.status if body.status is not None else "Planned",
 
             "edit_count": 0,
             "current_stage": 1,
-            "status": "in_progress",
             "stages": stages,
             "assigned_to": None,
             "assigned_by": self.user["username"],
@@ -136,6 +136,19 @@ class ElectricalWorksService(BaseBlockService):
 
         self.collection.update_one({"_id": oid, "block_id": self.BLOCK_ID}, {"$set": update_data})
         return {"message": "Updated", "id": app_id}
+
+    def update_status(self, app_id: str, status: str):
+        oid = self._to_oid(app_id)
+        doc = self.collection.find_one({"_id": oid, "block_id": self.BLOCK_ID})
+        if not doc:
+            raise HTTPException(status_code=404, detail="Application not found")
+        
+        now = datetime.utcnow()
+        self.collection.update_one(
+            {"_id": oid, "block_id": self.BLOCK_ID},
+            {"$set": {"status": status, "updated_at": now}}
+        )
+        return {"message": "Status updated successfully", "id": app_id, "status": status}
 
     def update_stage(self, app_id: str, body):
         oid = self._to_oid(app_id)
@@ -208,8 +221,8 @@ class ElectricalWorksService(BaseBlockService):
         )
         return {"message": "Stage updated"}
 
-    def get_scheme_overview_table(self, voltage=None, phase=None, zone=None, region=None, division=None):
-        """Calculates grouped stats for the data table view, applying filters first."""
+    def get_scheme_overview_table(self, voltage=None, phase=None, zone=None, region=None, division=None, status=None):
+        """Calculates grouped stats for the scheme head overview table view, applying filters first."""
         
         user_role = self.user.get("role", "").lower()
         user_division = self.user.get("division", "")
@@ -226,19 +239,20 @@ class ElectricalWorksService(BaseBlockService):
             if region: query["region"] = region
             if division: query["division"] = division
 
+        if status:
+            query["status"] = status
+
         apps = list(self.collection.find(query))
         overview = {}
 
         for app in apps:
             head = app.get("scheme_head", "Uncategorized")
-            div = app.get("division", "Unassigned")
             
-            group_key = f"{head}|||{div}" 
+            group_key = head
             
             if group_key not in overview:
                 overview[group_key] = {
                     "scheme_head": head,
-                    "division": div,
                     "total": 0, "completed": 0, "in_progress": 0, "pending": 0, "last_updated": None
                 }
             
@@ -261,6 +275,70 @@ class ElectricalWorksService(BaseBlockService):
             pct = round((stats["completed"] / stats["total"]) * 100) if stats["total"] > 0 else 0
             result.append({
                 "scheme_head": stats["scheme_head"],
+                "total": stats["total"],
+                "completed": stats["completed"],
+                "in_progress": stats["in_progress"],
+                "pending": stats["pending"],
+                "progress_pct": pct,
+                "last_updated": stats["last_updated"].strftime("%d/%m/%Y %I:%M %p") if stats["last_updated"] else "N/A"
+            })
+            
+        result.sort(key=lambda x: x["scheme_head"])
+        return result
+
+    def get_division_overview_table(self, voltage=None, phase=None, zone=None, region=None, division=None, status=None):
+        """Calculates grouped stats for the division overview table view, applying filters first."""
+        
+        user_role = self.user.get("role", "").lower()
+        user_division = self.user.get("division", "")
+        
+        query = {"block_id": self.BLOCK_ID}
+        
+        # If user is not admin/super_admin, restrict to their division
+        if user_role not in ("super_admin", "admin") and user_division:
+            query["division"] = user_division
+        else:
+            if voltage: query["voltage_level"] = voltage
+            if phase: query["phase"] = phase
+            if zone: query["zone"] = zone
+            if region: query["region"] = region
+            if division: query["division"] = division
+
+        if status:
+            query["status"] = status
+
+        apps = list(self.collection.find(query))
+        overview = {}
+
+        for app in apps:
+            div = app.get("division", "Unassigned")
+            
+            group_key = div
+            
+            if group_key not in overview:
+                overview[group_key] = {
+                    "division": div,
+                    "total": 0, "completed": 0, "in_progress": 0, "pending": 0, "last_updated": None
+                }
+            
+            overview[group_key]["total"] += 1
+            status = app.get("status", "in_progress")
+            
+            if status == "completed":
+                overview[group_key]["completed"] += 1
+            elif status == "in_progress":
+                overview[group_key]["in_progress"] += 1
+            else:
+                overview[group_key]["pending"] += 1
+                
+            upd = app.get("updated_at")
+            if upd and (overview[group_key]["last_updated"] is None or upd > overview[group_key]["last_updated"]):
+                overview[group_key]["last_updated"] = upd
+
+        result = []
+        for key, stats in overview.items():
+            pct = round((stats["completed"] / stats["total"]) * 100) if stats["total"] > 0 else 0
+            result.append({
                 "division": stats["division"],
                 "total": stats["total"],
                 "completed": stats["completed"],
@@ -270,7 +348,7 @@ class ElectricalWorksService(BaseBlockService):
                 "last_updated": stats["last_updated"].strftime("%d/%m/%Y %I:%M %p") if stats["last_updated"] else "N/A"
             })
             
-        result.sort(key=lambda x: (x["scheme_head"], x["division"]))
+        result.sort(key=lambda x: x["division"])
         return result
 
     def get_scheme_overview(self):

@@ -81,12 +81,29 @@ def get_overview_table(
     zone: str = Query(None),
     region: str = Query(None),
     division: str = Query(None),
+    status: str = Query(None),
     current=Depends(get_current_user)
 ):
     """Returns grouped stats by Scheme Head and Division with filters."""
     return ElectricalWorksService(current).get_scheme_overview_table(
-        voltage=voltage, phase=phase, zone=zone, region=region, division=division
+        voltage=voltage, phase=phase, zone=zone, region=region, division=division, status=status
     )
+
+@router.get("/division-overview")
+def get_division_overview(
+    voltage: str = Query(None),
+    phase: str = Query(None),
+    zone: str = Query(None),
+    region: str = Query(None),
+    division: str = Query(None),
+    status: str = Query(None),
+    current=Depends(get_current_user)
+):
+    """Returns grouped stats by Division with filters."""
+    return ElectricalWorksService(current).get_division_overview_table(
+        voltage=voltage, phase=phase, zone=zone, region=region, division=division, status=status
+    )
+
 
 # --- PARAMETERIZED ROUTES (Must be at the bottom) ---
 
@@ -107,6 +124,10 @@ def update(app_id: str, body: ElectricalWorkUpdate, current=Depends(get_current_
 @router.put("/{app_id}/stage")
 def update_stage(app_id: str, body: StageUpdate, current=Depends(get_current_user)):
     return ElectricalWorksService(current).update_stage(app_id, body)
+
+@router.put("/{app_id}/status")
+def update_status(app_id: str, status: str = Query(...), current=Depends(get_current_user)):
+    return ElectricalWorksService(current).update_status(app_id, status)
 
 @router.delete("/{app_id}")
 def delete(app_id: str, current=Depends(get_current_user)):

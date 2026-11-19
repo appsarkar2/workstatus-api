@@ -34,6 +34,7 @@ class ElectricalWorkCreate(BaseModel):
     target_date: Optional[str] = ""
     eoffice_ref: Optional[str] = ""
     detailed_status: Optional[str] = ""
+    status: Optional[str] = "Planned"
 
 class ElectricalWorkUpdate(BaseModel):
     applicant: Optional[ApplicantInfo] = None
@@ -57,6 +58,7 @@ class ElectricalWorkUpdate(BaseModel):
     target_date: Optional[str] = None
     eoffice_ref: Optional[str] = None
     detailed_status: Optional[str] = None
+    status: Optional[str] = "Planned"
 
 class StageUpdate(BaseModel):
     stage_no: int
