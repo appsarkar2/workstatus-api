@@ -144,6 +144,14 @@ def update_stage(app_id: str, body: StageUpdate, current=Depends(get_current_use
 def update_status(app_id: str, status: str = Query(...), current=Depends(get_current_user)):
     return ElectricalWorksService(current).update_status(app_id, status)
 
+@router.delete("/schemes/{scheme_id}")
+async def delete_scheme(scheme_id: str, current = Depends(get_current_user)):
+    service = ElectricalWorksService(current)
+    success = service.delete(scheme_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Scheme not found")
+    return {"status": "success", "message": "Scheme deleted successfully", "id": scheme_id}
+
 @router.delete("/{app_id}")
 def delete(app_id: str, current=Depends(get_current_user)):
     return ElectricalWorksService(current).delete(app_id)

@@ -6,6 +6,8 @@ import json
 from pathlib import Path
 from datetime import datetime, timedelta
 from fastapi import HTTPException
+from bson import ObjectId
+
 
 from app.blocks.base_service import BaseBlockService
 
@@ -222,6 +224,30 @@ class ElectricalWorksService(BaseBlockService):
             {"$set": {"stages": stages, "current_stage": doc.get("current_stage", 1), "status": doc["status"], "updated_at": now}}
         )
         return {"message": "Stage updated"}
+    def delete(self, scheme_id: str) -> bool:
+        if not self._can_delete():
+            raise HTTPException(status_code=403, detail="Only admins can delete")
+            
+        queries = []
+        
+        # 1. Try ObjectId format
+        if ObjectId.is_valid(scheme_id):
+            queries.append({"_id": ObjectId(scheme_id), "block_id": self.BLOCK_ID})
+        
+        # 2. Try raw string format
+        queries.append({"_id": scheme_id, "block_id": self.BLOCK_ID})
+        queries.append({"id": scheme_id, "block_id": self.BLOCK_ID})
+        queries.append({"work_number": scheme_id, "block_id": self.BLOCK_ID})
+        queries.append({"application_no": scheme_id, "block_id": self.BLOCK_ID})
+
+        # Execute deletion
+        for q in queries:
+            result = self.collection.delete_one(q)
+            if result.deleted_count > 0:
+                return True
+
+        return False
+
 
     def get_scheme_overview_table(self, voltage=None, phase=None, zone=None, region=None, division=None, status=None):
         """Calculates grouped stats for the scheme head overview table view, applying filters first."""
