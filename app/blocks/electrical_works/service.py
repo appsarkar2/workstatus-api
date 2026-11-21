@@ -93,6 +93,8 @@ class ElectricalWorksService(BaseBlockService):
             "taa_no": body.taa_no,
             "taa_value": body.taa_value,
             "billed_value": body.billed_value,
+            "planning_date": body.planning_date,
+            "proposal_initiate_date": body.proposal_initiate_date,
             "presently_with": body.presently_with,
             "target_date": body.target_date,
             "eoffice_ref": body.eoffice_ref,
@@ -122,7 +124,7 @@ class ElectricalWorksService(BaseBlockService):
         for field in ["phase", "zone", "region", "division", "scheme_head", "voltage_level", "related_ss", 
                       "scheme_name", "existing_parameter", "proposed_parameter", 
                       "loading_peak", "major_material", "priority", "taa_no", "taa_value", 
-                      "billed_value", "presently_with", "target_date", "eoffice_ref", "detailed_status"]:
+                      "billed_value", "planning_date", "proposal_initiate_date", "presently_with", "target_date", "eoffice_ref", "detailed_status"]:
             val = getattr(body, field, None)
             if val is not None:
                 update_data[field] = val
@@ -253,34 +255,31 @@ class ElectricalWorksService(BaseBlockService):
             if group_key not in overview:
                 overview[group_key] = {
                     "scheme_head": head,
-                    "total": 0, "completed": 0, "in_progress": 0, "pending": 0, "last_updated": None
+                    "total": 0, "planning": 0, "proposal": 0, "working": 0, "completed": 0
                 }
             
             overview[group_key]["total"] += 1
-            status = app.get("status", "in_progress")
+            st_val = (app.get("status") or "Planned").strip().capitalize()
             
-            if status == "completed":
+            if st_val == "Completed":
                 overview[group_key]["completed"] += 1
-            elif status == "in_progress":
-                overview[group_key]["in_progress"] += 1
+            elif st_val == "Working":
+                overview[group_key]["working"] += 1
+            elif st_val == "Proposal":
+                overview[group_key]["proposal"] += 1
             else:
-                overview[group_key]["pending"] += 1
-                
-            upd = app.get("updated_at")
-            if upd and (overview[group_key]["last_updated"] is None or upd > overview[group_key]["last_updated"]):
-                overview[group_key]["last_updated"] = upd
+                overview[group_key]["planning"] += 1
 
         result = []
         for key, stats in overview.items():
-            pct = round((stats["completed"] / stats["total"]) * 100) if stats["total"] > 0 else 0
             result.append({
                 "scheme_head": stats["scheme_head"],
+                "category": stats["scheme_head"],
                 "total": stats["total"],
-                "completed": stats["completed"],
-                "in_progress": stats["in_progress"],
-                "pending": stats["pending"],
-                "progress_pct": pct,
-                "last_updated": stats["last_updated"].strftime("%d/%m/%Y %I:%M %p") if stats["last_updated"] else "N/A"
+                "planning": stats["planning"],
+                "proposal": stats["proposal"],
+                "working": stats["working"],
+                "completed": stats["completed"]
             })
             
         result.sort(key=lambda x: x["scheme_head"])
@@ -318,38 +317,95 @@ class ElectricalWorksService(BaseBlockService):
             if group_key not in overview:
                 overview[group_key] = {
                     "division": div,
-                    "total": 0, "completed": 0, "in_progress": 0, "pending": 0, "last_updated": None
+                    "total": 0, "planning": 0, "proposal": 0, "working": 0, "completed": 0
                 }
             
             overview[group_key]["total"] += 1
-            status = app.get("status", "in_progress")
+            st_val = (app.get("status") or "Planned").strip().capitalize()
             
-            if status == "completed":
+            if st_val == "Completed":
                 overview[group_key]["completed"] += 1
-            elif status == "in_progress":
-                overview[group_key]["in_progress"] += 1
+            elif st_val in ("Working", "In Progress", "Under Execution"):
+                overview[group_key]["working"] += 1
+            elif st_val == "Proposal":
+                overview[group_key]["proposal"] += 1
             else:
-                overview[group_key]["pending"] += 1
-                
-            upd = app.get("updated_at")
-            if upd and (overview[group_key]["last_updated"] is None or upd > overview[group_key]["last_updated"]):
-                overview[group_key]["last_updated"] = upd
+                overview[group_key]["planning"] += 1
 
         result = []
         for key, stats in overview.items():
-            pct = round((stats["completed"] / stats["total"]) * 100) if stats["total"] > 0 else 0
             result.append({
                 "division": stats["division"],
                 "total": stats["total"],
-                "completed": stats["completed"],
-                "in_progress": stats["in_progress"],
-                "pending": stats["pending"],
-                "progress_pct": pct,
-                "last_updated": stats["last_updated"].strftime("%d/%m/%Y %I:%M %p") if stats["last_updated"] else "N/A"
+                "planning": stats["planning"],
+                "proposal": stats["proposal"],
+                "working": stats["working"],
+                "completed": stats["completed"]
             })
             
         result.sort(key=lambda x: x["division"])
         return result
+
+    def get_region_overview_table(self, voltage=None, phase=None, zone=None, region=None, division=None, status=None):
+        """Calculates grouped stats for the region overview table view, applying filters first."""
+        
+        user_role = self.user.get("role", "").lower()
+        user_division = self.user.get("division", "")
+        
+        query = {"block_id": self.BLOCK_ID}
+        
+        if user_role not in ("super_admin", "admin") and user_division:
+            query["division"] = user_division
+        else:
+            if voltage: query["voltage_level"] = voltage
+            if phase: query["phase"] = phase
+            if zone: query["zone"] = zone
+            if region: query["region"] = region
+            if division: query["division"] = division
+
+        if status:
+            query["status"] = status
+
+        apps = list(self.collection.find(query))
+        overview = {}
+
+        for app in apps:
+            reg = app.get("region", "Unassigned")
+            
+            group_key = reg
+            
+            if group_key not in overview:
+                overview[group_key] = {
+                    "region": reg,
+                    "total": 0, "planning": 0, "proposal": 0, "working": 0, "completed": 0
+                }
+            
+            overview[group_key]["total"] += 1
+            st_val = (app.get("status") or "Planned").strip().capitalize()
+            
+            if st_val == "Completed":
+                overview[group_key]["completed"] += 1
+            elif st_val in ("Working", "In Progress", "Under Execution"):
+                overview[group_key]["working"] += 1
+            elif st_val == "Proposal":
+                overview[group_key]["proposal"] += 1
+            else:
+                overview[group_key]["planning"] += 1
+
+        result = []
+        for key, stats in overview.items():
+            result.append({
+                "region": stats["region"],
+                "total": stats["total"],
+                "planning": stats["planning"],
+                "proposal": stats["proposal"],
+                "working": stats["working"],
+                "completed": stats["completed"]
+            })
+            
+        result.sort(key=lambda x: x["region"])
+        return result
+
 
     def get_scheme_overview(self):
         """Calculates stats grouped by Scheme Head and Phase."""

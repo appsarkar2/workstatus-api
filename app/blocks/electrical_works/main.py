@@ -104,6 +104,21 @@ def get_division_overview(
         voltage=voltage, phase=phase, zone=zone, region=region, division=division, status=status
     )
 
+@router.get("/region-overview")
+def get_region_overview(
+    voltage: str = Query(None),
+    phase: str = Query(None),
+    zone: str = Query(None),
+    region: str = Query(None),
+    division: str = Query(None),
+    status: str = Query(None),
+    current=Depends(get_current_user)
+):
+    """Returns grouped stats by Region with filters."""
+    return ElectricalWorksService(current).get_region_overview_table(
+        voltage=voltage, phase=phase, zone=zone, region=region, division=division, status=status
+    )
+
 
 # --- PARAMETERIZED ROUTES (Must be at the bottom) ---
 

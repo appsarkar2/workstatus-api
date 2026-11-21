@@ -16,7 +16,6 @@
   "documents_required": ["Application Form", "Site Map", "Load Approval"],
   "categories": [
     "33KV Second Source / Tapping Source Elemination",
-    "Augmentation of Conductor Size",
     "Augmentation of conductor size of 11kV Feeders",
     "Augmentation of conductor size of 33kV Feeders",
     "Augmentation of conductor size of 33kV Switchyard",
@@ -28,7 +27,6 @@
   ],
   "scheme_heads": [
     "33KV Second Source / Tapping Source Elemination",
-    "Augmentation of Conductor Size",
     "Augmentation of conductor size of 11kV Feeders",
     "Augmentation of conductor size of 33kV Feeders",
     "Augmentation of conductor size of 33kV Switchyard",
@@ -40,7 +38,6 @@
   ],
   "scheme_voltage_map": {
     "33KV Second Source / Tapping Source Elemination": "33 KV",
-    "Augmentation of Conductor Size": "Misc",
     "Augmentation of conductor size of 11kV Feeders": "11 KV",
     "Augmentation of conductor size of 33kV Feeders": "33 KV",
     "Augmentation of conductor size of 33kV Switchyard": "33 KV",

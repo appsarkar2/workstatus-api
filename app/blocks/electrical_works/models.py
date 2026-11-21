@@ -26,11 +26,11 @@ class ElectricalWorkCreate(BaseModel):
     major_material: Optional[str] = ""
     
     # Timeline & Status
-    priority: Optional[str] = "High"
+    priority: Optional[str] = None
     taa_no: Optional[str] = ""
-    taa_value: Optional[str] = ""      # <-- ADDED
-    billed_value: Optional[str] = ""   # <-- ADDED
-    presently_with: Optional[str] = "" # <-- ADDED
+    planning_date: Optional[str] = ""
+    proposal_initiate_date: Optional[str] = ""
+    presently_with: Optional[str] = ""
     target_date: Optional[str] = ""
     eoffice_ref: Optional[str] = ""
     detailed_status: Optional[str] = ""
@@ -52,9 +52,9 @@ class ElectricalWorkUpdate(BaseModel):
     major_material: Optional[str] = None
     priority: Optional[str] = None
     taa_no: Optional[str] = None
-    taa_value: Optional[str] = None      # <-- ADDED
-    billed_value: Optional[str] = None   # <-- ADDED
-    presently_with: Optional[str] = None # <-- ADDED
+    planning_date: Optional[str] = None
+    proposal_initiate_date: Optional[str] = None
+    presently_with: Optional[str] = None
     target_date: Optional[str] = None
     eoffice_ref: Optional[str] = None
     detailed_status: Optional[str] = None
