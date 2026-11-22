@@ -4,6 +4,7 @@ from app.blocks.electrical_works.models import (
     ElectricalWorkCreate,
     ElectricalWorkUpdate,
     StageUpdate,
+    SchemeUpdate,
 )
 from app.blocks.electrical_works.service import ElectricalWorksService
 from datetime import datetime
@@ -143,6 +144,14 @@ def update_stage(app_id: str, body: StageUpdate, current=Depends(get_current_use
 @router.put("/{app_id}/status")
 def update_status(app_id: str, status: str = Query(...), current=Depends(get_current_user)):
     return ElectricalWorksService(current).update_status(app_id, status)
+@router.put("/schemes/{scheme_id}")
+async def update_scheme(scheme_id: str, payload: SchemeUpdate, current=Depends(get_current_user)):
+    service = ElectricalWorksService(current)
+    update_dict = payload.dict(exclude_unset=True)
+    updated = service.update_scheme(scheme_id, update_dict)
+    return {"status": "success", "data": updated}
+
+
 
 @router.delete("/schemes/{scheme_id}")
 async def delete_scheme(scheme_id: str, current = Depends(get_current_user)):

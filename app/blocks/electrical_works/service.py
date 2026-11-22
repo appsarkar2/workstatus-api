@@ -76,32 +76,33 @@ class ElectricalWorksService(BaseBlockService):
         doc = {
             "block_id": self.BLOCK_ID,
             "application_no": generated_ref_no, 
-            "applicant": body.applicant.dict(),
+            "applicant": body.applicant.dict() if body.applicant else {"name": "Electrical Scheme", "contact": "", "address": ""},
             
             # Advanced Scheme Fields
-            "phase": body.phase,
-            "zone": body.zone,
-            "region": body.region,
-            "division": body.division,
-            "scheme_head": body.scheme_head,
-            "voltage_level": body.voltage_level, 
-            "related_ss": body.related_ss,
-            "scheme_name": body.scheme_name,
-            "existing_parameter": body.existing_parameter,
-            "proposed_parameter": body.proposed_parameter,
-            "loading_peak": body.loading_peak,
-            "major_material": body.major_material,
-            "priority": body.priority,
-            "taa_no": body.taa_no,
-            "taa_value": body.taa_value,
-            "billed_value": body.billed_value,
-            "planning_date": body.planning_date,
-            "proposal_initiate_date": body.proposal_initiate_date,
-            "presently_with": body.presently_with,
-            "target_date": body.target_date,
-            "eoffice_ref": body.eoffice_ref,
-            "detailed_status": body.detailed_status,
-            "status": body.status if body.status is not None else "Planned",
+            "phase": getattr(body, "phase", "Phase-I"),
+            "zone": getattr(body, "zone", ""),
+            "region": getattr(body, "region", ""),
+            "division": getattr(body, "division", ""),
+            "scheme_head": getattr(body, "scheme_head", ""),
+            "voltage_level": getattr(body, "voltage_level", "11 KV"), 
+            "related_ss": getattr(body, "related_ss", ""),
+            "scheme_name": getattr(body, "scheme_name", ""),
+            "existing_parameter": getattr(body, "existing_parameter", ""),
+            "proposed_parameter": getattr(body, "proposed_parameter", ""),
+            "loading_peak": getattr(body, "loading_peak", ""),
+            "major_material": getattr(body, "major_material", ""),
+            "priority": getattr(body, "priority", None),
+            "taa_no": getattr(body, "taa_no", ""),
+            "taa_date": getattr(body, "taa_date", None),
+            "taa_value": getattr(body, "taa_value", None),
+            "billed_value": getattr(body, "billed_value", None),
+            "planning_date": getattr(body, "planning_date", ""),
+            "proposal_initiate_date": getattr(body, "proposal_initiate_date", ""),
+            "presently_with": getattr(body, "presently_with", ""),
+            "target_date": getattr(body, "target_date", ""),
+            "eoffice_ref": getattr(body, "eoffice_ref", ""),
+            "detailed_status": getattr(body, "detailed_status", ""),
+            "status": getattr(body, "status", None) if getattr(body, "status", None) is not None else "Planned",
 
             "edit_count": 0,
             "current_stage": 1,
@@ -131,7 +132,7 @@ class ElectricalWorksService(BaseBlockService):
             if val is not None:
                 update_data[field] = val
 
-        if body.applicant is not None: 
+        if body.applicant is not None:
             update_data["applicant"] = body.applicant.dict()
 
         current_count = doc.get("edit_count", 0)
@@ -140,6 +141,38 @@ class ElectricalWorksService(BaseBlockService):
 
         self.collection.update_one({"_id": oid, "block_id": self.BLOCK_ID}, {"$set": update_data})
         return {"message": "Updated", "id": app_id}
+
+    def update_scheme(self, scheme_id: str, update_data: dict):
+        oid = self._to_oid(scheme_id)
+        doc = self.collection.find_one({"_id": oid, "block_id": self.BLOCK_ID})
+        if not doc:
+            # Try raw string id
+            doc = self.collection.find_one({"_id": scheme_id, "block_id": self.BLOCK_ID})
+            if not doc:
+                raise HTTPException(status_code=404, detail="Scheme not found")
+            query = {"_id": scheme_id, "block_id": self.BLOCK_ID}
+        else:
+            query = {"_id": oid, "block_id": self.BLOCK_ID}
+
+        update_data["updated_at"] = datetime.utcnow()
+        if "status" in update_data and update_data["status"]:
+            update_data["overall_status"] = update_data["status"]
+        elif "overall_status" in update_data and update_data["overall_status"]:
+            update_data["status"] = update_data["overall_status"]
+
+        if "major_materials" in update_data and update_data["major_materials"] is not None:
+            update_data["major_material"] = update_data["major_materials"]
+        if "work_status" in update_data and update_data["work_status"] is not None:
+            update_data["detailed_status"] = update_data["work_status"]
+
+        current_count = doc.get("edit_count", 0)
+        update_data["edit_count"] = current_count + 1
+
+        self.collection.update_one(query, {"$set": update_data})
+        updated_doc = self.collection.find_one(query)
+        if updated_doc and "_id" in updated_doc:
+            updated_doc["_id"] = str(updated_doc["_id"])
+        return updated_doc
 
     def update_status(self, app_id: str, status: str):
         oid = self._to_oid(app_id)
