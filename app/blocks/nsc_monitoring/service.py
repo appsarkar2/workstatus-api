@@ -51,13 +51,46 @@ class NSCMonitoringService(BaseBlockService):
         result = self.collection.delete_many({})
         return {"message": "All records deleted successfully", "deleted_count": result.deleted_count}
 
+    def parse_no_of_poles(self, val) -> int:
+        if val is None:
+            return 0
+        s = str(val).strip().lower()
+        if s in ('', '(null)', 'null', 'nan', 'none', '0', '-'):
+            return 0
+        try:
+            return int(float(s))
+        except (ValueError, TypeError):
+            return 0
+
     async def bulk_upload_csv(self, file):
         try:
             self.collection.delete_many({})
             df = pd.read_csv(file.file, dtype=str)
+            
+            # Normalize header lookup: match NO_OF_POLES, no_of_poles, or column headers containing pole
+            pole_col = None
+            for col in df.columns:
+                c_clean = col.strip().lower()
+                if c_clean == 'no_of_poles' or 'pole' in c_clean:
+                    pole_col = col
+                    break
+
             df.columns = [c.lower() for c in df.columns]
             df = df.fillna("")
-            data = df.to_dict('records')
+            records = df.to_dict('records')
+            data = []
+            for row in records:
+                doc = dict(row)
+                val = None
+                if pole_col:
+                    val = row.get(pole_col)
+                if val is None:
+                    val = row.get('no_of_poles') or row.get('NO_OF_POLES') or 0
+                
+                no_of_poles = self.parse_no_of_poles(val)
+                doc['no_of_poles'] = max(no_of_poles, 0)
+                data.append(doc)
+
             if data:
                 self.collection.insert_many(data)
             return {"message": "Data uploaded successfully", "count": len(data)}
@@ -95,6 +128,18 @@ class NSCMonitoringService(BaseBlockService):
             query["conn_class"] = filters["conn_class"].strip()
         if filters.get("applicant_type") and filters["applicant_type"].strip() != "": 
             query["applicant_type"] = {"$regex": filters["applicant_type"].strip(), "$options": "i"}
+
+        pole_type = filters.get("pole_type", "all")
+        if pole_type == "pole":
+            query["no_of_poles"] = {"$gt": 0}
+        elif pole_type == "non_pole":
+            query["$or"] = [
+                {"no_of_poles": {"$exists": False}},
+                {"no_of_poles": None},
+                {"no_of_poles": 0},
+                {"no_of_poles": "0"}
+            ]
+
 
         if "reg" in query:
             reg_val = query.pop("reg")
@@ -176,6 +221,12 @@ class NSCMonitoringService(BaseBlockService):
         quotation_delay = round(sum(valid_qtn_delays) / len(valid_qtn_delays), 2) if valid_qtn_delays else 0.00
         wo_delay = round(sum(valid_wo_delays) / len(valid_wo_delays), 2) if valid_wo_delays else 0.00
 
+        total_poles_agg = list(self.collection.aggregate([
+            {"$match": query},
+            {"$group": {"_id": None, "total_poles": {"$sum": "$no_of_poles"}}}
+        ]))
+        total_poles = total_poles_agg[0]["total_poles"] if total_poles_agg else 0
+
         region_pipeline = [
             {"$match": query},
             {
@@ -242,6 +293,7 @@ class NSCMonitoringService(BaseBlockService):
 
         return {
             "total_cases": total_cases,
+            "total_poles": total_poles,
             "pending_count": pending_count,
             "pending_wo": pending_wo,
             "pending_application": pending_application,
@@ -305,6 +357,18 @@ class NSCMonitoringService(BaseBlockService):
         if "reg" in query:
             reg_val = query.pop("reg")
             query["$or"] = [{"reg": reg_val}, {"region": reg_val}]
+        pole_type = filters.get("pole_type", "all")
+        if pole_type == "pole":
+            query["no_of_poles"] = {"$gt": 0}
+        elif pole_type == "non_pole":
+            query["$or"] = [
+                {"no_of_poles": {"$exists": False}},
+                {"no_of_poles": None},
+                {"no_of_poles": 0},
+                {"no_of_poles": "0"}
+            ]
+
+
 
         status_type = filters.get("status_type")
         

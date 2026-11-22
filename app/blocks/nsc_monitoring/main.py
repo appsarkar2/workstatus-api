@@ -40,6 +40,7 @@ def get_kpi_dashboard(
     conn_class: str = Query(None),
     applicant_type: str = Query(None),
     group_by: str = Query("reg"),
+    pole_type: str = Query('all'),
     current=Depends(get_current_user)
 ):
     service = NSCMonitoringService(current)
@@ -50,7 +51,8 @@ def get_kpi_dashboard(
         "ccc_code": ccc_code,
         "conn_class": conn_class,
         "applicant_type": applicant_type,
-        "group_by": group_by
+        "group_by": group_by,
+        "pole_type": pole_type
     }
     return service.get_kpi_dashboard(filters=filters)
 # -----------------------------------
@@ -64,6 +66,7 @@ def get_pending_details(
     conn_class: str = Query(None),
     applicant_type: str = Query(None),
     status_type: str = Query(None),
+    pole_type: str = Query('all'),
     current=Depends(get_current_user)
 ):
     service = NSCMonitoringService(current)
@@ -74,7 +77,8 @@ def get_pending_details(
         "ccc_code": ccc_code,
         "conn_class": conn_class,
         "applicant_type": applicant_type,
-        "status_type": status_type
+        "status_type": status_type,
+        "pole_type": pole_type
     }
     return service.get_pending_details(filters=filters)
 
