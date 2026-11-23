@@ -135,6 +135,25 @@ def get_weekly_deposit_disposal(
     }
     return service.get_weekly_deposit_disposal(filters=filters)
 
+@router.get("/collection-aging")
+def get_collection_aging(
+    zone: str = Query(None),
+    region: str = Query(None),
+    division: str = Query(None),
+    ccc: str = Query(None),
+    pole_type: str = Query(None),
+    current=Depends(get_current_user)
+):
+    service = NSCMonitoringService(current)
+    filters = {
+        "zone": zone,
+        "region": region,
+        "division": division,
+        "ccc": ccc,
+        "pole_type": pole_type
+    }
+    return service.get_collection_aging(filters=filters)
+
 @router.post("/bulk-upload")
 async def bulk_upload_csv(file: UploadFile = File(...), current=Depends(get_current_user)):
     if current.get("username") != "superadmin":
