@@ -1,0 +1,6 @@
+1. Keep `STATUS.md` synced: Whenever you add or modify an API route, MongoDB collection/field, workflow stage, frontend page, filter, KPI, RBAC rule, or bug fix in `backend/` or `frontend/`, you MUST update `STATUS.md` (with date, summary of change, and Current State / Next Tasks) before finishing the task.
+2. Preserve core architecture & `$0/month` constraints:
+   - FastAPI + MongoDB Atlas (`workstatus_v1`, Free M0) + Vanilla JS PWA (Render + Vercel).
+   - Keep `bcrypt==4.0.1` pinned, `HTTPBearer(auto_error=False)` for CORS, and 5-minute idle auto-logout in `auth-guard.js`.
+   - Maintain DB-driven RBAC (`superadmin`, `allowed_stages`, UI role hiding) and modular block auto-discovery (`app/blocks/__init__.py` & `BaseBlockService`).
+3. Never modify `.env`, commit `venv/`, or expose secrets.

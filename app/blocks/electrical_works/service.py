@@ -32,6 +32,11 @@ class ElectricalWorksService(BaseBlockService):
     def __init__(self, user: dict):
         super().__init__(user=user, config=CONFIG)
 
+    def _view_filter(self) -> dict:
+        """Electrical Works allows viewing all schemes for authenticated users without filtering by assigned_to."""
+        return {"block_id": self.BLOCK_ID}
+
+
     def create(self, body):
         now = datetime.utcnow()
         date_str = now.strftime("%Y%m%d")
